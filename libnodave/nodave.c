@@ -229,6 +229,17 @@ daveInterface * DECL2 daveNewInterface(_daveOSserialType nfd, char * nname, int 
 		di->exchange=_daveFakeExchangeAS511;
 		di->sendMessage=_daveFakeExchangeAS511;
 		break;		
+	    case daveProtoNLpro:
+		di->initAdapter=_daveInitAdapterNLpro;
+		di->connectPLC=_daveConnectPLCNLpro;
+		di->disconnectPLC=_daveDisconnectPLCNLpro;
+		di->disconnectAdapter=_daveDisconnectAdapterNLpro;
+		di->exchange=_daveExchangeNLpro;
+		di->sendMessage=_daveSendMessageNLpro;
+		di->getResponse=_daveGetResponseNLpro;
+		di->listReachablePartners=_daveListReachablePartnersNLpro;
+		break;
+	
 	}
 #ifdef BCCWIN
 	setTimeOut(di, di->timeout);
@@ -1055,14 +1066,17 @@ int DECL2 daveGetOrderCode(daveConnection * dc,char * buf) {
     return res;
 }
 
-int DECL2 daveReadSZL(daveConnection * dc, int ID, int index, void * buffer) {
-    int res,len;
+int DECL2 daveReadSZL(daveConnection * dc, int ID, int index, void * buffer, int buflen) {
+    int res,len,cpylen;
+    int pa7;
+//    int pa6;
     PDU p2;
     uc pa[]={0,1,18,4,17,68,1,0};
     uc da[]={1,17,0,1};
     
     uc pam[]={0,1,18,8,18,68,1,1,0,0,0,0};
-    uc dam[]={0,10,0,0};
+//    uc dam[]={10,0,0,0};
+
 #ifdef DEBUG_CALLS
     LOG5("daveReadSZL(dc:%p, ID:%d, index:%d, buffer:%p)\n", dc, ID, index, buffer);
     FLUSH;
@@ -1074,17 +1088,29 @@ int DECL2 daveReadSZL(daveConnection * dc, int ID, int index, void * buffer) {
     res=daveBuildAndSendPDU(dc, &p2,pa, sizeof(pa), da, sizeof(da));
     
     len=0;
+    pa7=p2.param[7];
+//    pa6=p2.param[6];
     while (p2.param[9]!=0) {
-	if (buffer!=NULL) memcpy((uc *)buffer+len,p2.udata,p2.udlen);
+	if (buffer!=NULL) {
+          cpylen = p2.udlen;
+          if (len + cpylen > buflen) cpylen = buflen - len;
+          if (cpylen > 0) memcpy((uc *)buffer+len,p2.udata,cpylen);
+        }
         dc->resultPointer=p2.udata;
         dc->_resultPointer=p2.udata;
         len+=p2.udlen;
-	res=daveBuildAndSendPDU(dc, &p2,pam, sizeof(pam), dam, sizeof(dam));
+		pam[7]=pa7;
+//		res=daveBuildAndSendPDU(dc, &p2,pam, sizeof(pam), NULL, sizeof(dam));
+		res=daveBuildAndSendPDU(dc, &p2,pam, sizeof(pam), NULL, 1);
     }
     
     
     if (res==daveResOK) {
-	if (buffer!=NULL) memcpy((uc *)buffer+len,p2.udata,p2.udlen);
+	if (buffer!=NULL) {
+          cpylen = p2.udlen;
+          if (len + cpylen > buflen) cpylen = buflen - len;
+          if (cpylen > 0) memcpy((uc *)buffer+len,p2.udata,cpylen);
+        }
         dc->resultPointer=p2.udata;
         dc->_resultPointer=p2.udata;
         len+=p2.udlen;
@@ -1456,6 +1482,12 @@ daveConnection * DECL2 daveNewConnection(daveInterface * di, int MPI, int rack, 
 		di->ackPos=4;		/* position of 0xB0 in ack packet */
 		break;	
 
+	    case daveProtoNLpro:	/* Deltalogic NetLink Pro */	
+		dc->PDUstartO=6;	/* position of PDU in outgoing messages */
+		dc->PDUstartI=8;	/* position of PDU in incoming messages */
+		di->ackPos=4;		/* position of 0xB0 in ack packet */
+		break;	
+
 	    case daveProtoPPI:
 		dc->PDUstartO=3;	/* position of PDU in outgoing messages */
 		dc->PDUstartI=7;	/* position of PDU in incoming messages */
@@ -1489,7 +1521,7 @@ daveConnection * DECL2 daveNewConnection(daveInterface * di, int MPI, int rack, 
 		dc->PDUstartI=80;
 		dc->PDUstartO=80;
 		break;		
-	    	
+
 	    default:
 		dc->PDUstartO=8;	/* position of PDU in outgoing messages */
 		dc->PDUstartI=8;	/* position of PDU in incoming messages */
@@ -5214,6 +5246,24 @@ int DECL2 daveForceDisconnectIBH(daveInterface * di, int src, int dest, int mpi)
     return 0;
 }   
 
+/*
+    Resets the IBH-NetLink.
+    Returns 0 for success and a negative number on errors.
+*/
+int DECL2 daveResetIBH(daveInterface * di) {
+    uc chalReset[]={
+	0x00,0xff,0x01,0x00,0x00,0x00,0x01,0x00,0x01
+    };
+    uc b[daveMaxRawLen];
+    _daveWriteIBH(di, chalReset, sizeof(chalReset));
+    _daveReadIBHPacket(di, b);
+#ifdef BCCWIN
+#else
+    _daveReadIBHPacket(di, b);
+#endif   
+    return 0;
+}
+
 void DECL2 _daveSendMPIAck2(daveConnection *dc) {
     IBHpacket * p;
     uc c;
@@ -6405,6 +6455,442 @@ int DECL2 _daveDisconnectAdapterS7online(daveInterface * di) {
     return res;
 }
 */
+/***
+    NetLink Pro
+***/
+#define NET
+
+#ifndef NET
+int DECL2 _daveReadMPINLpro(daveInterface * di, uc *b) {
+	int res=0,state=0,nr_read;
+	uc bcc=0;
+        nr_read= di->ifread(di, b, 2);
+	if (nr_read>=2) {
+	    res=256*b[0]+b[1]+2;
+	    if (res>nr_read)
+		nr_read+=di->ifread(di, b+nr_read, res-nr_read);
+	    if (daveDebug & daveDebugInitAdapter) 
+		LOG4("%s nr_read:%d res:%d.\n", di->name, nr_read, res);
+	    return res-2;
+	}
+}
+#endif
+
+#ifdef NET
+#ifdef HAVE_SELECT
+/*
+    Read one complete packet. The bytes 0 and 1 contain length information.
+    This version needs a socket filedescriptor that is set to O_NONBLOCK or
+    it will hang, if there are not enough bytes to read.
+    The advantage may be that the timeout is not used repeatedly.
+*/
+int DECL2 _daveReadMPINLpro(daveInterface * di,uc *b) {
+	int res,length;
+	fd_set FDS;
+	struct timeval t;
+	FD_ZERO(&FDS);
+	FD_SET(di->fd.rfd, &FDS);
+	
+	t.tv_sec = di->timeout / 1000000;
+	t.tv_usec = di->timeout % 1000000;
+	if (select(di->fd.rfd + 1, &FDS, NULL, NULL, &t) <= 0) {
+	    if (daveDebug & daveDebugByte) LOG1("timeout in ReadMPINLpro.\n");
+	    return 0;
+	} else {
+	res=read(di->fd.rfd, b, 2);
+        if (res<2) {
+	    if (daveDebug & daveDebugByte) {
+		LOG2("res %d ",res);
+		_daveDump("readISOpacket: short packet", b, res);
+	    }
+	    return (0); /* short packet */
+	}
+	length=b[1]+0x100*b[0];
+	res+=read(di->fd.rfd, b+2, length);
+	if (daveDebug & daveDebugByte) {
+	    LOG3("readMPINLpro: %d bytes read, %d needed\n",res, length);
+	    _daveDump("readMPINLpro: packet", b, res);    
+	}
+	return (res);
+    }
+}
+#endif /* HAVE_SELECT */
+
+#ifdef BCCWIN
+int DECL2 _daveReadMPINLpro(daveInterface * di,uc *b) {
+	int res,i,length;
+	i=recv((SOCKET)(di->fd.rfd), b, 2, 0);
+	res=i;
+	if (res <= 0) {
+	    if (daveDebug & daveDebugByte) LOG1("timeout in ReadISOPacket.\n");
+	    return 0;
+	} else {
+    	    if (res<2) {
+	    if (daveDebug & daveDebugByte) {
+		LOG2("res %d ",res);
+		_daveDump("readISOpacket: short packet", b, res);
+	    }
+	    return (0); /* short packet */
+	}
+	length=b[1]+0x100*b[0];
+	i=recv((SOCKET)(di->fd.rfd), b+2, length, 0);
+	res+=i;
+	if (daveDebug & daveDebugByte) {
+	    LOG3("readMPINLpro: %d bytes read, %d needed\n",res, length);
+	    _daveDump("readMPIpro: packet", b, res);    
+	}
+	return (res);
+    }
+}
+
+#endif /* */
+#endif
+
+
+/* 
+    This initializes the MPI adapter. Andrew's version.
+*/
+
+int DECL2 _daveInitAdapterNLpro(daveInterface * di)  /* serial interface */
+{
+    uc b3[]={
+	0x01,0x03,0x02,0x27, 0x00,0x9F,0x01,0x14,
+ 	0x00,0x90,0x01,0xc, 0x00,	/* ^^^ MaxTsdr */
+	0x00,0x5,
+ 	0x02,/* Bus speed */
+
+	0x00,0x0F,0x05,0x01,0x01,0x03,0x81,/* from topserverdemo */
+	/*^^ - Local mpi */
+    };		
+    
+    int res;
+    b3[16]=di->localMPI;
+    if (di->speed==daveSpeed500k)
+	b3[7]=0x64;
+    if (di->speed==daveSpeed1500k)
+	b3[7]=0x96;
+    b3[15]=di->speed;
+
+//    res=_daveInitStep(di, 1, b3, sizeof(b3),"initAdapter()");
+    res=_daveInitStepNLpro(di, 1, b3, sizeof(b3),"initAdapter()");
+
+//    res= _daveReadMPINLpro(di, b1);
+    if (daveDebug & daveDebugInitAdapter) 
+	LOG2("%s initAdapter() success.\n", di->name);
+//   _daveSendSingle(di,DLE);
+    di->users=0;	/* there cannot be any connections now */
+    return 0;
+}
+
+
+void DECL2 _daveSendSingleNLpro(daveInterface * di,	/* serial interface */
+		     uc c  			/* chracter to be send */
+		     ) 
+{
+    unsigned long i;
+    uc c3[3];
+    c3[0]=0;
+    c3[1]=1;
+    c3[2]=c;
+//    di->ifwrite(di, c3, 3);
+#ifdef HAVE_SELECT
+    daveWriteFile(di->fd.wfd, c3, 3, i);
+#endif    
+#ifdef BCCWIN
+    send((unsigned int)(di->fd.wfd), c3, 3, 0);
+#endif
+    
+}
+
+/*
+int DECL2 _daveSendISOPacket(daveConnection * dc, int size) {
+    unsigned long i;
+    size+=4;
+    *(dc->msgOut+3)=size % 0x100;	//was %0xFF, certainly a bug	
+    *(dc->msgOut+2)=size / 0x100;
+    *(dc->msgOut+1)=0;
+    *(dc->msgOut+0)=3;
+    if (daveDebug & daveDebugByte) 
+	_daveDump("send packet: ",dc->msgOut,size);
+#ifdef HAVE_SELECT
+    daveWriteFile(dc->iface->fd.wfd, dc->msgOut, size, i);
+#endif    
+#ifdef BCCWIN
+    send((unsigned int)(dc->iface->fd.wfd), dc->msgOut, size, 0);
+#endif
+    return 0;
+}
+*/
+
+/* 
+    This sends a string after doubling DLEs in the String
+    and adding DLE,ETX and bcc.
+*/
+int DECL2 _daveSendWithCRCNLpro(daveInterface * di, /* serial interface */
+		    uc *b, 		 /* a buffer containing the message */
+		    int size		 /* the size of the string */
+		)
+{		
+    uc target[daveMaxRawLen];
+    int i,targetSize=2;
+    target[0]=size / 256;
+    target[1]=size % 256;
+    
+//    int bcc=DLE^ETX; /* preload */
+    for (i=0; i<size; i++) {
+	target[targetSize]=b[i];targetSize++;
+    };
+//    targetSize+=0;
+//    di->ifwrite(di, target, targetSize);
+#ifdef HAVE_SELECT
+    daveWriteFile(di->fd.wfd, target, targetSize, i);
+#endif    
+#ifdef BCCWIN
+    send((unsigned int)(di->fd.wfd), target, targetSize, 0);
+#endif
+    
+    if (daveDebug & daveDebugPacket)
+	    _daveDump("_daveSendWithCRCNLpro",target, targetSize);
+    return 0;
+}
+
+
+/* 
+    Send a string of init data to the MPI adapter.
+*/
+int DECL2 _daveInitStepNLpro(daveInterface * di, int nr, uc *fix, int len, char * caller) {
+    uc res[500];
+    int i;
+    if (daveDebug & daveDebugInitAdapter)
+	LOG4("%s %s step %d.\n", di->name, caller, nr);
+
+    _daveSendWithCRCNLpro(di, fix, len);
+    i=_daveReadMPINLpro(di, res);
+    return 0;
+}    
+
+/* 
+    Open connection to a PLC. This assumes that dc is initialized by
+    daveNewConnection and is not yet used.
+    (or reused for the same PLC ?)
+*/
+int DECL2 _daveConnectPLCNLpro(daveConnection * dc) {
+    int res;
+    PDU p1;
+    uc b4[]={
+	0x04,0x80,0x80,0x0D,0x00,0x14,0xE0,0x04,
+	0x00,0x80,0x00,0x02,
+	0x00,
+	0x02,
+	0x01,0x00,
+	0x01,0x00,
+    };
+
+    us t4[]={
+	0x04,0x80,0x180,0x0C,0x114,0x103,0xD0,0x04,	// 1/10/05 trying Andrew's patch
+	0x00,0x80,
+	0x00,0x02,0x00,0x02,0x01,
+	0x00,0x01,0x00,
+    };
+    uc b5[]={	
+	0x05,0x07,
+    };
+    us t5[]={    
+	0x04,
+	0x80,
+	0x180,0x0C,0x114,0x103,0x05,0x01,
+    };
+    b4[1]|=dc->MPIAdr;	
+    b4[5]=dc->connectionNumber; // 1/10/05 trying Andrew's patch
+    
+    t4[1]|=dc->MPIAdr;	
+    t5[1]|=dc->MPIAdr;	
+    _daveInitStepNLpro(dc->iface, 1, b4, sizeof(b4),"connectPLC(1)");
+    
+    dc->connectionNumber2=dc->msgIn[5]; // 1/10/05 trying Andrew's patch
+    if (daveDebug & daveDebugConnect) 
+	LOG2("%s daveConnectPLC(1) step 4.\n", dc->iface->name);	
+    
+    if (daveDebug & daveDebugConnect) 
+	LOG2("%s daveConnectPLC() step 5.\n", dc->iface->name);	
+
+    _daveSendWithPrefixNLpro(dc, b5, sizeof(b5));		
+        
+    if (daveDebug & daveDebugConnect) 
+	LOG2("%s daveConnectPLC() step 6.\n", dc->iface->name);	
+    res= _daveReadMPINLpro(dc->iface,dc->msgIn);
+    if (daveDebug & daveDebugConnect) 
+	LOG2("%s daveConnectPLC() step 7.\n", dc->iface->name);	
+    res= _daveNegPDUlengthRequest(dc, &p1);
+    return 0;
+}
+
+
+/*
+    Executes part of the dialog necessary to send a message:
+*/
+int DECL2 _daveSendDialogNLpro(daveConnection * dc, int size)
+{
+    if (size>5){
+	dc->needAckNumber=dc->messageNumber;
+	dc->msgOut[dc->iface->ackPos+1]=_daveIncMessageNumber(dc);
+    }	
+    _daveSendWithPrefix2NLpro(dc, size);
+    return 0;
+}
+
+
+/*
+    Sends a message and gets ackknowledge:
+*/
+int DECL2 _daveSendMessageNLpro(daveConnection * dc, PDU * p) {
+    if (daveDebug & daveDebugExchange) {
+        LOG2("%s enter _daveSendMessageNLpro\n", dc->iface->name);
+    }    
+    if (_daveSendDialogNLpro(dc, /*2+*/p->hlen+p->plen+p->dlen)) {
+	LOG2("%s *** _daveSendMessageMPI error in _daveSendDialog.\n",dc->iface->name);	    		
+//	return -1;	
+    }	
+    if (daveDebug & daveDebugExchange) {
+        LOG3("%s _daveSendMessageMPI send done. needAck %x\n", dc->iface->name,dc->needAckNumber);	    
+    }	
+    return 0;
+}
+
+
+int DECL2 _daveExchangeNLpro(daveConnection * dc, PDU * p) {
+    _daveSendMessageNLpro(dc, p);
+    dc->AnswLen=0;
+    return _daveGetResponseNLpro(dc);
+}
+
+int DECL2 _daveGetResponseNLpro(daveConnection *dc) {
+    int res;
+    if (daveDebug & daveDebugExchange) {
+        LOG2("%s _daveGetResponseNLpro receive message.\n", dc->iface->name);	    
+    }	
+    res = _daveReadMPINLpro(dc->iface,dc->msgIn);
+    if (res<=0) {
+	if (daveDebug & daveDebugPrintErrors) {
+	    LOG2("%s *** _daveGetResponseMPI no answer data.\n", dc->iface->name);	    
+	}        
+	return -3;
+    }	
+    return 0;
+}
+
+
+int DECL2 _daveSendWithPrefixNLpro(daveConnection * dc, uc *b, int size)
+{
+    uc target[daveMaxRawLen];
+//    uc fix[]= {04,0x80,0x80,0x0C,0x03,0x14};
+    uc fix[]= {0x4,0x80,0x80,0x0C,0x14,0x14};    
+//	fix[4]=dc->connectionNumber2; 		// 1/10/05 trying Andrew's patch
+//	fix[5]=dc->connectionNumber; 		// 1/10/05 trying Andrew's patch
+    	memcpy(target,fix,sizeof(fix));
+	memcpy(target+sizeof(fix),b,size);
+	target[1]|=dc->MPIAdr;
+//	target[2]|=dc->iface->localMPI;
+	memcpy(target+sizeof(fix),b,size);
+	return _daveSendWithCRCNLpro(dc->iface,target,size+sizeof(fix));
+}
+
+
+int DECL2 _daveSendWithPrefix2NLpro(daveConnection * dc, int size)
+{
+//    uc fix[]= {04,0x80,0x80,0x0C,0x03,0x14};
+    uc fix[]= {0x14,0x80,0x80,0x0C,0x14,0x14};
+//	fix[4]=dc->connectionNumber2;		// 1/10/05 trying Andrew's patch
+//	fix[5]=dc->connectionNumber;		// 1/10/05 trying Andrew's patch
+	memcpy(dc->msgOut, fix, sizeof(fix));
+	dc->msgOut[1]|=dc->MPIAdr;
+//	dc->msgOut[2]|=dc->iface->localMPI; //???
+///	dc->msgOut[sizeof(fix)]=0xF1;
+/*	if (daveDebug & daveDebugPacket)
+	    _daveDump("_daveSendWithPrefix2",dc->msgOut,size+sizeof(fix)); */
+	return _daveSendWithCRCNLpro(dc->iface, dc->msgOut, size+sizeof(fix));
+//    }
+    return -1; /* shouldn't happen. */
+}
+
+int DECL2 _daveDisconnectPLCNLpro(daveConnection * dc)
+{
+    int res;
+    uc m[]={
+        0x80
+    };
+    uc b1[daveMaxRawLen];
+    
+    _daveSendSingleNLpro(dc->iface, STX);
+    
+    res=_daveReadMPINLpro(dc->iface,b1);
+    _daveSendWithPrefixNLpro(dc, m, 1);	
+    
+    res=_daveReadMPINLpro(dc->iface,b1);
+/*
+    res=_daveReadMPI(dc->iface,b1);
+    if (daveDebug & daveDebugConnect) 
+	_daveDump("got",b1,10);
+    _daveSendSingle(dc->iface, DLE);
+*/
+    return 0;
+}    
+
+/*
+    It seems to be better to complete this subroutine even if answers
+    from adapter are not as expected.
+*/
+int DECL2 _daveDisconnectAdapterNLpro(daveInterface * di) {
+    int res;
+    uc m2[]={
+        1,4,2
+    };
+    
+    uc b1[daveMaxRawLen];
+    if (daveDebug & daveDebugInitAdapter) 
+	LOG2("%s enter DisconnectAdapter()\n", di->name);	
+//    _daveSendSingleNLpro(di, STX);
+//    res=_daveReadMPINLpro(di,b1);
+/*    if ((res!=1)||(b1[0]!=DLE)) return -1; */
+    _daveSendWithCRCNLpro(di, m2, sizeof(m2));		
+    if (daveDebug & daveDebugInitAdapter) 
+	LOG2("%s daveDisconnectAdapter() step 1.\n", di->name);	
+    res=_daveReadMPINLpro(di, b1);
+/*    if ((res!=1)||(b1[0]!=DLE)) return -2; */
+/*
+    res=_daveReadMPI(di, b1);
+*/    
+/*    if ((res!=1)||(b1[0]!=STX)) return -3; */
+/*
+    if (daveDebug & daveDebugInitAdapter) 
+	LOG2("%s daveDisconnectAdapter() step 2.\n", di->name);	
+    _daveSendSingle(di, DLE);
+    _daveReadChars2(di, b1, daveMaxRawLen);
+//    _daveReadChars(di, b1, tmo_normal, daveMaxRawLen);
+    _daveSendSingle(di, DLE);
+    if (daveDebug & daveDebugInitAdapter) 
+	_daveDump("got",b1,10);
+*/	
+    return 0;	
+}
+
+/*
+*/
+int DECL2 _daveListReachablePartnersNLpro(daveInterface * di,char * buf) {
+    uc b1[daveMaxRawLen];
+    uc m1[]={1,7,2};
+    int res;
+    _daveSendWithCRCNLpro(di, m1, sizeof(m1));
+    res=_daveReadMPINLpro(di,b1);
+//    LOG2("res: %d\n", res);	
+    if(135==res){
+        memcpy(buf,b1+8,126);
+	return 126;
+    } else
+	return 0;	
+}   
+
+
 /*
     Changes: 
     09/09/04  applied patch for variable Profibus speed from Andrew Rostovtsew.
@@ -6486,5 +6972,6 @@ int DECL2 _daveDisconnectAdapterS7online(daveInterface * di) {
 	      another #define in some headers on some ARM systems.
     10/10/05  change some pointer increments for gcc-4.0.2 compatibility.
     10/18/05  Indroduced a (temporary?) work around to allow applications to use normal sequence 
-	      disconnectAdapter/closePort also with s7online.	
+	      disconnectAdapter/closePort also with s7online.		
+    02/20/06  Added code to support NetLink Pro.
 */

@@ -52,6 +52,7 @@ _daveReadChars2
 _daveReadIBHPacket
 _daveReadISOPacket
 _daveReadMPI2
+_daveReadMPINLpro
 _daveReadMPI
 _daveReadOne
 _daveReadSingle
@@ -160,6 +161,7 @@ daveReadBytes
 daveReadManyBytes
 daveReadPLCTime
 daveReadSZL
+daveResetIBH
 daveSendMessage
 daveSetBit
 daveSetDebug

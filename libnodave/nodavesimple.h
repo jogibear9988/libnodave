@@ -85,6 +85,8 @@ typedef struct {
 #define daveProtoISOTCP	122	/* ISO over TCP */
 #define daveProtoISOTCP243 123	/* ISO over TCP with CP243 */
 
+#define daveProtoNLpro 230	/* MPI with NetLink Pro MPI to ethernet gateway */
+
 #define daveProtoMPI_IBH 223	/* MPI with IBH NetLink MPI to ethernet gateway */
 #define daveProtoPPI_IBH 224	/* PPI with IBH NetLink PPI to ethernet gateway */
 
@@ -512,7 +514,7 @@ EXPORTSPEC int DECL2 daveClrBit(daveConnection * dc,int area, int DB, int byteAd
 /*
     PLC diagnostic and inventory functions:
 */
-EXPORTSPEC int DECL2 daveReadSZL(daveConnection * dc, int ID, int index, void * buf);
+EXPORTSPEC int DECL2 daveReadSZL(daveConnection * dc, int ID, int index, void * buf, int buflen);
 EXPORTSPEC int DECL2 daveListBlocksOfType(daveConnection * dc,uc type,daveBlockEntry * buf);
 EXPORTSPEC int DECL2 daveListBlocks(daveConnection * dc,daveBlockTypeEntry * buf);
 /*
@@ -601,6 +603,10 @@ EXPORTSPEC int DECL2 daveGetErrorOfResult(daveResultSet *,int number);
     Special function do disconnect arbitrary connections on IBH-Link:
 */
 EXPORTSPEC int DECL2 daveForceDisconnectIBH(daveInterface * di, int src, int dest, int mpi);
+/*
+    Special function do reset an IBH-Link:
+*/
+EXPORTSPEC int DECL2 daveResetIBH(daveInterface * di);
 /**
     Program Block from PLC:
 */

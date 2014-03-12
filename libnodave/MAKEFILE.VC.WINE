@@ -35,7 +35,7 @@ L2FLAGS = /LIBPATH:"$(VCPATH)\lib" /DEF:s7onlinx.DEF
 PROGRAMS=testMPI.exe testPPI.exe testAS511.exe \
 testPPI_IBH.exe testPPI_IBHload.exe testPPIload.exe \
 testMPIload.exe testISO_TCP.exe testISO_TCPload.exe testIBH.exe testMPI_IBHload.exe \
-testS7online.exe
+testS7online.exe testNLpro.exe
 
 DYNAMIC_PROGRAMS=testMPId.exe testPPId.exe testISO_TCPd.exe testIBHd.exe testPPI_IBHd.exe
 
@@ -79,6 +79,8 @@ testPPI_IBHload.exe: nodave.obj  openSocketw.obj testPPI_IBHload.obj
 	$(LL) $(LFLAGS) openSocketw.obj nodave.obj testPPI_IBHload.obj "C:\\psdk\\lib\\ws2_32.lib" /out:testPPI_IBHload.exe
 testAS511.exe: testAS511.obj nodave.obj setportw.obj
 	$(LL) $(LFLAGS) setportw.obj nodave.obj testAS511.obj "C:\\psdk\\lib\\ws2_32.lib" /out:$@	
+testNLpro.exe: testNLpro.obj nodave.obj openSocketw.obj
+	$(LL) $(LFLAGS) openSocketw.obj nodave.obj testNLpro.obj "C:\\psdk\\lib\\ws2_32.lib" /out:$@	
 libnodave.dll: nodave.obj setportw.obj openSocketw.obj openS7online.obj 
 	$(LL) $(LLFLAGS) /DLL nodave.obj setportw.obj openSocketw.obj openS7online.obj "C:\\psdk\\lib\\ws2_32.lib" /OUT:libnodave.dll
 testS7online.exe: testS7online.obj nodave.obj openS7online.obj 

@@ -6,8 +6,8 @@
 #
 # The directory where the tools are:
 #
-VCPATH=e:\programme\microsoft visual C++ Toolkit 2003
-SDKPATH=e:\programme\microsoft platform sdk
+VCPATH=d:\programme\microsoft visual C++ Toolkit 2003
+SDKPATH=d:\programme\microsoft platform sdk
 
 CC="$(VCPATH)\bin\cl"
 LL="$(VCPATH)\bin\link"
@@ -16,9 +16,10 @@ CFLAGS= -I"$(VCPATH)\include" -I"$(SDKPATH)\include" -c -DBCCWIN -DDAVE_LITTLE_E
 LFLAGS= /LIBPATH:"$(VCPATH)"\lib,"$(SDKPATH)"\lib
 LLFLAGS = /LIBPATH:"$(VCPATH)\lib" /DEF:libnodave.DEF
 
-PROGRAMS=testMPI.exe testPPI.exe \
+PROGRAMS=testMPI.exe testPPI.exe testAS511.exe\
 testPPI_IBH.exe testPPI_IBHload.exe testPPIload.exe \
-testMPIload.exe testISO_TCP.exe testISO_TCPload.exe testIBH.exe testMPI_IBHload.exe  
+testMPIload.exe testISO_TCP.exe testISO_TCPload.exe testIBH.exe testMPI_IBHload.exe \
+testNLpro.exe
 
 DYNAMIC_PROGRAMS=testMPId.exe testPPId.exe testISO_TCPd.exe testIBHd.exe testPPI_IBHd.exe
 
@@ -58,8 +59,12 @@ testMPI_IBHload.exe: nodave.obj  openSocketw.obj testMPI_IBHload.obj
 	$(LL) $(LFLAGS) openSocketw.obj nodave.obj testMPI_IBHload.obj "$(SDKPATH)"\lib\ws2_32.lib /OUT:testMPI_IBHload.exe
 testPPI_IBHload.exe: nodave.obj  openSocketw.obj testPPI_IBHload.obj
 	$(LL) $(LFLAGS) openSocketw.obj nodave.obj testPPI_IBHload.obj "$(SDKPATH)"\lib\ws2_32.lib /OUT:testPPI_IBHload.exe
-libnodave.dll: nodave.obj setportw.obj openSocketw.obj
-	$(LL) $(LLFLAGS) /DLL nodave.obj setportw.obj openSocketw.obj "$(SDKPATH)"\lib\ws2_32.lib /OUT:libnodave.dll    
+testAS511.exe: testAS511.obj nodave.obj setportw.obj
+	$(LL) $(LFLAGS) setportw.obj nodave.obj testAS511.obj "$(SDKPATH)"\lib\ws2_32.lib /out:$@
+testNLpro.exe: testNLpro.obj nodave.obj openSocketw.obj
+	$(LL) $(LFLAGS) openSocketw.obj nodave.obj testNLpro.obj "$(SDKPATH)"\lib\ws2_32.lib /out:$@
+libnodave.dll: nodave.obj setportw.obj openSocketw.obj openS7online.obj 
+	$(LL) $(LLFLAGS) /DLL nodave.obj setportw.obj openSocketw.obj openS7online.obj "$(SDKPATH)"\lib\ws2_32.lib /OUT:libnodave.dll    
 testS7online.exe: testS7online.obj nodave.obj openS7online.obj 
 	$(LL) $(LFLAGS) nodave.obj testS7online.obj openS7online.obj  "C:\\psdk\\lib\\ws2_32.lib" /out:$@		
 #
@@ -76,3 +81,7 @@ setportw.obj: setportw.c
 	$(CC) $(CFLAGS) -DDOEXPORT setportw.c
 openSocketw.obj: openSocketw.c
 	$(CC) $(CFLAGS) -DDOEXPORT openSocketw.c
+openS7online.obj: openS7online.c openS7online.h 
+	$(CC) $(CFLAGS) -DDOEXPORT openS7online.c
+s7fake.obj: s7fake.c
+	$(CC) $(CFLAGS) -DDOEXPORT s7fake.c

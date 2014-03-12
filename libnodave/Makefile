@@ -23,7 +23,9 @@ CPPFLAGS=-Wall -Winline -DLINUX -DDAVE_LITTLE_ENDIAN
 PROGRAMS=testIBH testISO_TCP testMPI testPPI \
 testPPIload testMPIload ibhsim5 \
 isotest4 \
-testISO_TCPload testMPI_IBHload testPPI_IBHload testPPI_IBH testAS511 testUSB
+testISO_TCPload testMPI_IBHload testPPI_IBHload testPPI_IBH \
+testNLpro \
+testAS511 testUSB
 
 # testISO2
 # testMPImin
@@ -54,6 +56,7 @@ testPPIload.o: nodave.h
 testMPIload.o: nodave.h
 testMPI_IBHload.o: nodave.h
 testPPI_IBHload.o: nodave.h
+testNLpro.o: benchmark.c nodavesimple.h
 
 testISO_TCP: nodave.o openSocket.o testISO_TCP.o
 	$(CC) $(LDFLAGS) nodave.o openSocket.o testISO_TCP.o -o testISO_TCP
@@ -93,6 +96,8 @@ testAS511: setport.o testAS511.o nodave.o
 	$(CC) $(LDFLAGS) setport.o nodave.o testAS511.o -o testAS511
 testUSB: testUSB.o nodave.o usbGlue.o usbGlue.h
 	$(CC) $(LDFLAGS) nodave.o testUSB.o usbGlue.o -lusb -o testUSB
+testNLpro: openSocket.o testNLpro.o nodave.o
+	$(CC) $(LDFLAGS) openSocket.o nodave.o testNLpro.o -o testNLpro
 crc: crc.o
 	$(CC) $(LDFLAGS) crc.o -o crc
 crc3: crc3.o

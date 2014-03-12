@@ -129,6 +129,8 @@ typedef struct dost {
 #define daveProtoMPI_IBH 223	/* MPI with IBH NetLink MPI to ethernet gateway */
 #define daveProtoPPI_IBH 224	/* PPI with IBH NetLink PPI to ethernet gateway */
 
+#define daveProtoNLpro 230	/* MPI with NetLink Pro MPI to ethernet gateway */
+
 #define daveProtoUserTransport 255	/* Libnodave will pass the PDUs of S7 Communication to user */
 					/* defined call back functions. */
 
@@ -778,7 +780,7 @@ EXPORTSPEC int DECL2 daveClrBit(daveConnection * dc,int area, int DB, int byteAd
     PLC diagnostic and inventory functions:
 */
 EXPORTSPEC int DECL2 daveBuildAndSendPDU(daveConnection * dc, PDU*p2,uc *pa,int psize, uc *ud,int usize);
-EXPORTSPEC int DECL2 daveReadSZL(daveConnection * dc, int ID, int index, void * buf);
+EXPORTSPEC int DECL2 daveReadSZL(daveConnection * dc, int ID, int index, void * buf, int buflen);
 EXPORTSPEC int DECL2 daveListBlocksOfType(daveConnection * dc,uc type,daveBlockEntry * buf);
 EXPORTSPEC int DECL2 daveListBlocks(daveConnection * dc,daveBlockTypeEntry * buf);
 EXPORTSPEC int DECL2 daveGetBlockInfo(daveConnection * dc, daveBlockInfo *dbi, uc type, int number);
@@ -972,7 +974,10 @@ EXPORTSPEC int DECL2 daveGetErrorOfResult(daveResultSet *,int number);
     Special function do disconnect arbitrary connections on IBH-Link:
 */
 EXPORTSPEC int DECL2 daveForceDisconnectIBH(daveInterface * di, int src, int dest, int mpi);
-
+/*
+    Special function do reset an IBH-Link:
+*/
+EXPORTSPEC int DECL2 daveResetIBH(daveInterface * di);
 /*
     Program Block from PLC:
 */
@@ -1101,6 +1106,19 @@ EXPORTSPEC int DECL2 _daveDisconnectAdapterS7online(daveInterface * di);
 
 EXPORTSPEC int DECL2 stdwrite(daveInterface * di, uc * buffer, int length);
 EXPORTSPEC int DECL2 stdread(daveInterface * di, uc * buffer, int length);
+
+EXPORTSPEC int DECL2 _daveInitAdapterNLpro(daveInterface * di);
+EXPORTSPEC int DECL2 _daveInitStepNLpro(daveInterface * iface, int nr, uc* fix, int len, char*caller);
+EXPORTSPEC int DECL2 _daveConnectPLCNLpro (daveConnection * dc);
+EXPORTSPEC int DECL2 _daveSendMessageNLpro(daveConnection *dc, PDU *p);
+EXPORTSPEC int DECL2 _daveGetResponseNLpro(daveConnection *dc);
+EXPORTSPEC int DECL2 _daveExchangeNLpro(daveConnection * dc, PDU * p);
+EXPORTSPEC int DECL2 _daveSendDialogNLpro(daveConnection * dc, int size);
+EXPORTSPEC int DECL2 _daveSendWithPrefixNLpro(daveConnection * dc, uc * b,int size);
+EXPORTSPEC int DECL2 _daveSendWithPrefix2NLpro(daveConnection * dc, int size);
+EXPORTSPEC int DECL2 _daveDisconnectPLCNLpro(daveConnection * dc);
+EXPORTSPEC int DECL2 _daveDisconnectAdapterNLpro(daveInterface * di);
+EXPORTSPEC int DECL2 _daveListReachablePartnersNLpro(daveInterface * di, char * buf);
 
 
 #endif /* _nodave */

@@ -55,6 +55,7 @@ void usage()
     printf("-d will produce a lot of debug messages.\n");
     printf("-b will run benchmarks. Specify -b and -w to run write benchmarks.\n");
     printf("-z will read some SZL list items (diagnostic information).\n");
+    printf("--szlID will read given SZL ID.\n");
     printf("-m will run a test for multiple variable reads.\n");
     printf("-c will write 0 to the PLC memory used in write tests.\n");
     printf("-n will test newly added functions.\n");
@@ -74,7 +75,6 @@ void usage()
     printf("--readoutall read all program and data blocks from PLC. Includes SFBs and SFCs.\n");
     printf("--debug=<number> will set daveDebug to number.\n");
     printf("--area=<number> try to use number as a memory area code.\n");
-    printf("--reset tries to reset the NetLink.\n");
     printf("Example: testIBH -w 192.168.1.1\n");
 }
 
@@ -223,9 +223,10 @@ int main(int argc, char **argv) {
     int i,j, a,b,c, adrPos, doWrite, doBenchmark, 
 	doSZLread, doMultiple, doClear, doNewfunctions, doWbit,
 	initSuccess, doSZLreadAll, doRun, doStop, doReadout, doSFBandSFC, doList, doListAll,
+	doLifeList, 
 	doReadTime, doSync, doReset,
 	saveDebug, testArea,
-	res, useProto, speed, localMPI, plcMPI, plc2MPI, wbit;
+	res, useProto, speed, localMPI, plcMPI, plc2MPI, wbit, szlID, szlIndex;
     PDU p;	
     float d;
     char buf1 [davePartnerListSize];
@@ -249,12 +250,15 @@ int main(int argc, char **argv) {
     doSFBandSFC=0;
     doList=0;
     doListAll=0;
+    doLifeList=0;
     doReadTime=0;
     doSync=0;
-    doList=0;
     doReset=0;
+    szlID=-1;
+    szlIndex=-0;
     
-    useProto=daveProtoMPI_IBH;
+    
+    useProto=daveProtoNLpro;
     speed=daveSpeed187k;
     localMPI=0;
     plcMPI=2;
@@ -330,6 +334,12 @@ int main(int argc, char **argv) {
 	    printf("setting bit number:%d\n",wbit);
 	    doWbit=1;
 	} 
+	else if (strncmp(argv[adrPos],"--szlID=",8)==0) {
+	    szlID=atol(argv[adrPos]+8);
+	} else
+	if (strncmp(argv[adrPos],"--index=",8)==0) {
+	    szlIndex=atol(argv[adrPos]+8);
+	}
 	else if (strcmp(argv[adrPos],"-z")==0) {
 	    doSZLread=1;
 	}
@@ -344,7 +354,7 @@ int main(int argc, char **argv) {
 	} else if (strcmp(argv[adrPos],"-n")==0) {
 	    doNewfunctions=1;
 	} else if (strcmp(argv[adrPos],"-l")==0) {
-	    doList=1;
+	    doLifeList=1;
 	}
  	
 	adrPos++;
@@ -355,7 +365,8 @@ int main(int argc, char **argv) {
     }    
     initSuccess=0;	
     
-    fds.rfd=openSocket(1099, argv[adrPos]);
+//    fds.rfd=openSocket(1099, argv[adrPos]);
+    fds.rfd=openSocket(7777, argv[adrPos]);
     fds.wfd=fds.rfd;
     
     if (fds.rfd>0) { 
@@ -363,14 +374,14 @@ int main(int argc, char **argv) {
 	
 	if(doReset) {
 	    daveResetIBH(di);
-	    return(-2);
+	    return (-2);
 	}
 	daveSetTimeout(di,5000000);
 	
 	for (i=0; i<3; i++) {
 	    if (0==daveInitAdapter(di)) {
 		initSuccess=1;	
-		if(doList) {		
+		if(doLifeList) {		
 		    a= daveListReachablePartners(di,buf1);
 		    printf("daveListReachablePartners List length: %d\n",a);
 		    if (a>0) {
@@ -642,6 +653,9 @@ int main(int argc, char **argv) {
 	    
 	    readSZL(dc,0x0A0,0x0);
 	}
+	if(szlID!=-1) {
+	    readSZL(dc,szlID,szlIndex);
+	}
 	
 /*
 	if(doSZLread) {
@@ -855,8 +869,6 @@ int main(int argc, char **argv) {
 		printf("%d ",a);
 	    }
 	} // doSync
-	
-	
 /*	
 	i=1;
 	res=daveReadBytes(dc, daveInputs,0, 256, 2,NULL);

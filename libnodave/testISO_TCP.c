@@ -57,7 +57,7 @@ void readSZL(daveConnection *dc,int id, int index) {
     uc * d,*dd;
     uc ddd[3000];
     printf("Trying to read SZL-ID %04X index %02X.\n",id,index);
-    res=daveReadSZL(dc,id,index, ddd);
+    res=daveReadSZL(dc,id,index, ddd, 3000);
     printf("Function result: %d %s len:%d\n",res,daveStrerror(res),dc->AnswLen);
 //    _daveDump("Data",dc->resultPointer,dc->AnswLen);
     _daveDump("Data",ddd,dc->AnswLen);
@@ -99,7 +99,7 @@ void readSZLAll(daveConnection *dc) {
     int res, SZLid, indx, SZcount, SZlen,i,j, rid, rind;
     uc * d,*dd;
     
-    res=daveReadSZL(dc,0,0,SzlList);
+    res=daveReadSZL(dc,0,0,SzlList, 1000);
     printf("%d %d\n",res,dc->AnswLen);
     if ((dc->AnswLen)>=4) {
 	d=dc->resultPointer;
