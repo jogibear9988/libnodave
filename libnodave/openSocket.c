@@ -62,6 +62,7 @@ int openSocket(const int port, const char * peer) {
 //	(((port) & 0xff) << 8) | (((port) & 0xff00) >> 8);
 #ifndef DONT_USE_GETHOSTBYNAME
     he = gethostbyname(peer);
+    if (!he) return 0;  // bug reported by Nick Hibma
     memcpy(&addr.sin_addr, he->h_addr_list[0], sizeof(addr.sin_addr));
 #else
     inet_aton(peer, &addr.sin_addr);
