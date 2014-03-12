@@ -135,9 +135,9 @@ void readSZLAll(daveConnection *dc) {
 
 void wait() {
     uc c;
-    printf("Press return to continue.\n");
+//    printf("Press return to continue.\n");
 #ifdef UNIX_STYLE
-    read(0,&c,1);
+//    read(0,&c,1);
 #endif
 }    
 
@@ -157,6 +157,7 @@ void usage()
     printf("--readout read program and data blocks from PLC.\n");
     printf("--readoutall read all program and data blocks from PLC. Includes SFBs and SFCs.\n");
     printf("--slot=<number> sets slot for PLC (default is 2).\n");
+    printf("--ram2rom tries to Copy RAM to ROM.\n");    
     printf("--debug=<number> will set daveDebug to number.\n");
     printf("Example: testISO_TCP -w 192.168.19.1\n");
 }
@@ -212,7 +213,7 @@ void loadBlocksOfType(daveConnection * dc, int blockType) {
 
 int main(int argc, char **argv) {
     int a,b,c,adrPos,doWrite,doBenchmark, doSZLread, doMultiple, doClear,
-	res, useProtocol,doSZLreadAll, doRun, doStop, doReadout, doSFBandSFC,
+	res, useProtocol,doSZLreadAll, doRun, doStop, doCopyRAMtoROM, doReadout, doSFBandSFC,
 	doNewfunctions, saveDebug,
 	useSlot;
 #ifdef PLAY_WITH_KEEPALIVE    	
@@ -235,6 +236,7 @@ int main(int argc, char **argv) {
     doSZLreadAll=0;
     doRun=0;
     doStop=0;
+    doCopyRAMtoROM=0;
     doReadout=0;
     doSFBandSFC=0;
     doNewfunctions=0;
@@ -258,6 +260,8 @@ int main(int argc, char **argv) {
 	    doStop=1;
 	} else if (strcmp(argv[adrPos],"-r")==0) {
 	    doRun=1;
+	} else if (strncmp(argv[adrPos],"--ram2rom",9)==0) {
+	    doCopyRAMtoROM=1;    
 	} else if (strncmp(argv[adrPos],"--readoutall",12)==0) {
 	    doReadout=1;
 	    doSFBandSFC=1;
@@ -611,6 +615,10 @@ int main(int argc, char **argv) {
 	if(doRun) {
 	    daveStart(dc);
 	}
+	if(doCopyRAMtoROM) {
+	    res = daveCopyRAMtoROM(dc);
+            printf("RetVal=(%04X)\n",res);  	    
+	}
 	if(doReadout) {
 	    loadBlocksOfType(dc, daveBlockType_OB);
 	    loadBlocksOfType(dc, daveBlockType_FB);
@@ -636,11 +644,13 @@ int main(int argc, char **argv) {
 		} // doWrite
 	    }	
 	} // doBenchmark
-
+	closeSocket(fds.rfd);
 	printf("Finished.\n");
+	
 	return 0;
 	} else {
 	    printf("Couldn't connect to PLC.\n Please make sure you use the -2 option with a CP243 but not with CPs 343 or 443.\n");	
+	    closeSocket(fds.rfd);
 	    return -2;
 	}
     } else {
@@ -658,4 +668,7 @@ int main(int argc, char **argv) {
     03/28/05  changed code to use flag (M) area for write. Was DB17.
     04/09/05  removed CYGWIN defines. As there were no more differences against LINUX, it should 
 	      work with LINUX defines.
+Version 0.8.4.5
+    07/10/09  Added closeSocket()	      
+    07/10/09  Added daveCopyRAMtoROM
 */

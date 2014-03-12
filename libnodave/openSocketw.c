@@ -166,10 +166,16 @@ __declspec (dllexport) HANDLE __stdcall openSocket(const int port, const char * 
     return (HANDLE) fd;
 }
 
+__declspec (dllexport) int __stdcall closeSocket(SOCKET h) {
+    return closesocket(h);
+}
+
 #endif
 /*
     Changes: 
     07/12/2003	moved openSocket to it's own file, because it can be reused in other TCP clients
     04/07/2004  ported C++ version to C
     07/19/2004  removed unused vars.
+Version 0.8.4.5    
+    07/10/09  	Added closeSocket()
 */

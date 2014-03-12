@@ -872,10 +872,12 @@ int main(int argc, char **argv) {
 	    daveDisconnectPLC(dc2);
 	}
 	daveDisconnectAdapter(di);
+	closeSocket(fds.rfd);
 	return 0;
 	} else {
 	    printf("Couldn't connect to PLC.\n");	
 	    daveDisconnectAdapter(di);
+	    closeSocket(fds.rfd);
 	    return -2;
 	}
     } else {
@@ -889,4 +891,7 @@ int main(int argc, char **argv) {
     02/15/05  copied from testMPI and modified for IBH.
     04/09/05  removed CYGWIN defines. As there were no more differences against LINUX, it should 
 	      work with LINUX defines.
+Version 0.8.4.5
+    07/10/09  Added closeSocket()
+	      
 */

@@ -80,6 +80,7 @@ _daveTestResultData
 _daveTestWriteResult
 _daveWriteIBH
 closePort
+closeSocket
 closeS7online
 daveAddBitVarToReadRequest
 daveAddBitVarToWriteRequest
@@ -90,6 +91,7 @@ daveAreaName
 daveBlockName
 daveBuildAndSendPDU
 daveClrBit
+daveCopyRAMtoROM
 daveConnectPLC
 daveDisconnectAdapter
 daveDisconnectPLC

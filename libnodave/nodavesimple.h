@@ -529,6 +529,10 @@ EXPORTSPEC int DECL2 daveGetProgramBlock(daveConnection * dc, int blockType, int
 */
 EXPORTSPEC int DECL2 daveStop(daveConnection*dc);
 EXPORTSPEC int DECL2 daveStart(daveConnection*dc);
+/*
+    PLC special commands
+*/    
+EXPORTSPEC int DECL2 daveCopyRAMtoROM(daveConnection*dc);
 	
 EXPORTSPEC int DECL2 daveForce200(daveConnection * dc, int area, int start, int val);
 /*

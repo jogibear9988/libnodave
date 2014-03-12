@@ -17,11 +17,11 @@ rm -f *.obj
 rm -f *.exp
 rm -f *.lib
 cd Dot.NET
-mono.sh
+./mono.sh
 cd ..
 cd pascal
-build.linux
-buildwine.sh
+./build.linux
+./buildwine.sh
 cd ..
 cd PERL
 perl Makefile.PL

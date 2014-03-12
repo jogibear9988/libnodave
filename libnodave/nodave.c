@@ -939,6 +939,10 @@ uc paMakeStop[]= {
     0x29,0,0,0,0,0,9,'P','_','P','R','O','G','R','A','M'
 };
 
+uc paCopyRAMtoROM[]= {
+    0x28,0,0,0,0,0,0,0xfd,0,2,'E','P',5,'_','M','O','D','U'
+};
+
 int DECL2 daveStop(daveConnection * dc) {
     int res;
     PDU p,p2;
@@ -984,6 +988,28 @@ int DECL2 daveStart(daveConnection*dc) {
     }
     return res;
 }
+
+int DECL2 daveCopyRAMtoROM(daveConnection * dc) {
+    int res;
+    PDU p,p2;
+#ifdef DEBUG_CALLS
+    LOG2("davecopyRAMtoROM(dc:%p)\n", dc);
+    FLUSH;
+#endif	  
+    p.header=dc->msgOut+dc->PDUstartO;
+    _daveInitPDUheader(&p, 1);
+    _daveAddParam(&p, paCopyRAMtoROM, sizeof(paCopyRAMtoROM));
+    res=_daveExchange(dc, &p);
+    if (res==daveResOK) {
+	res=_daveSetupReceivedPDU(dc,&p2);  /* possible problem, Timeout */
+	if (daveDebug & daveDebugPDU) {
+	    _daveDumpPDU(&p2);
+	}
+    }
+    return res;
+}
+
+
 
 /*
     Build a PDU with user data ud, send it and prepare received PDU.
@@ -1651,7 +1677,8 @@ int DECL2 doUpload(daveConnection*dc, int * more, uc**buffer, int*len, int uploa
     res=_daveSetupReceivedPDU(dc, &p2);
     *more=p2.param[1];
     if(res!=daveResOK) return res;
-    netLen=p2.data[1] /* +256*p2.data[0]; */ /* for long PDUs, I guess it is so */;
+//    netLen=p2.data[1] /* +256*p2.data[0]; */ /* for long PDUs, I guess it is so */;
+    netLen=p2.data[1]+256*p2.data[0]; /* some user confirmed my guess... */;
     if (*buffer) {
 	memcpy(*buffer,p2.data+4,netLen);
 	*buffer+=netLen;
@@ -3763,7 +3790,18 @@ int DECL2 _daveReadIBHPacket(daveInterface * di,uc *b) {
 #ifdef BCCWIN
 
 int DECL2 _daveReadISOPacket(daveInterface * di,uc *b) {
-	int res,i,length;
+    int res,i,length;
+    fd_set FDS;
+    struct timeval t;
+    FD_ZERO(&FDS);
+    FD_SET((SOCKET)(di->fd.rfd), &FDS);
+	
+    t.tv_sec = di->timeout / 1000000;
+    t.tv_usec = di->timeout % 1000000;
+    if (select(/*di->fd.rfd +*/ 1, &FDS, NULL, NULL, &t) <= 0) {
+        if (daveDebug & daveDebugByte) LOG1("timeout in ReadIBHPacket.\n");
+	    return 0;
+    } else {
 	i=recv((SOCKET)(di->fd.rfd), b, 4, 0);
 	res=i;
 	if (res <= 0) {
@@ -3785,6 +3823,7 @@ int DECL2 _daveReadISOPacket(daveInterface * di,uc *b) {
 	    _daveDump("readISOpacket: packet", b, res);    
 	}
 	return (res);
+	}
     }
 }
 
@@ -7063,4 +7102,8 @@ _get_errnoFunc SCP_get_errno;
 
     01/04/07  Set last byte of resp09 to don't care as reported by Axel Kinting.
     02/07/08  Removed patch from Keith Harris for RTS line.
+Version 0.8.4.5    
+    07/10/09  Changed readISOpacket for Win32 to select() before recv().
+    07/10/09  Added daveCopyRAMtoROM
+    07/11/09  Changed calculation of netLen in doUpload()
 */
