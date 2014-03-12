@@ -379,7 +379,7 @@ int main(int argc, char **argv) {
 	    doGetHeaders=1;
 	} else if (strncmp(argv[adrPos],"--many=",7)==0) {
 	    aLongDB=atol(argv[adrPos]+7);
-	    doTestMany=1;    
+	    doTestMany=1;
 	} else if (strncmp(argv[adrPos],"--listall",9)==0) {
 	    doListall=1;
 	    doList=1;
@@ -1014,7 +1014,7 @@ int main(int argc, char **argv) {
 		printf("%d ",a);
 	    }
 	    printf("\n");
-	} // doSync
+	} // doReadTime
 	
 	if(doTestMany) {
 	    printf("read a long block of bytes from DB%d\n",aLongDB);

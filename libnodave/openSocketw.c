@@ -168,8 +168,9 @@ __declspec (dllexport) HANDLE __stdcall openSocket(const int port, const char * 
 }
 
 __declspec (dllexport) int __stdcall closeSocket(SOCKET h) {
-    return closesocket(h);
+    int res=closesocket(h);
     WSACleanup();	// patch from Klaus Albert
+    return res;
 }
 
 #endif
@@ -183,4 +184,5 @@ Version 0.8.4.5
 Version 0.8.5    
     05/17/2013  	Suppress message if debug mode is not set
     05/20/2013  	added WSACleanup(), patch from Klaus Albert
+    01/16/2013  	fixed unreachable WSACleanup(). Grazie a Domenichini Luca.
 */

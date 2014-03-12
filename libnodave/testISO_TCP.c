@@ -154,12 +154,14 @@ void usage()
     printf("-z will read some SZL list items (diagnostic information).\n"
 	    "  Works 300 and 400 family only.\n");
     printf("-s stops the PLC.\n");
+    printf("-t reads time from PLC clock.\n");
     printf("-r tries to put the PLC in run mode.\n");
     printf("--readout read program and data blocks from PLC.\n");
     printf("--route=subnetId,subnetId,PLC address. Try routing. ");
     printf("	subnetID are the two values you see in Step7 or NetPro. PLC address is a number (MPI,Profibus) or an IP adress.\n");
     printf("	Examples: --route=0x0125,0x0013,1 connects to PLC 1 in an MPI/Profibus subnet.\n");
     printf("	Examples: --route=0x0125,0x0013,192.168.1.51 connects to PLC with IP 192.168.1.51 in an Ethernet subnet.\n");
+    printf("--sync sets the PLC's clock to PC time.\n");
     printf("--readoutall read all program and data blocks from PLC. Includes SFBs and SFCs.\n");
     printf("--slot=<number> sets slot for PLC (default is 2).\n");
     printf("--ram2rom tries to Copy RAM to ROM.\n");    
@@ -239,9 +241,13 @@ void getBlockHeadersOfType(daveConnection * dc, int blockType) {
 #include "benchmark.c"
 
 int main(int argc, char **argv) {
-    int a,b,c,adrPos,doWrite,doBenchmark, doSZLread, doMultiple, doClear,
+    int i,a,b,c,adrPos,doWrite,doBenchmark, doSZLread, doMultiple, doClear,
 	res, useProtocol,doSZLreadAll, doRun, doStop, doCopyRAMtoROM, doReadout, doSFBandSFC,
-	doNewfunctions, saveDebug, doRouting, doList, doListall,
+	doSync, doReadTime,
+	doTestMany,
+	doNewfunctions,
+	aLongDB,
+	saveDebug, doRouting, doList, doListall,
 	useSlot;
 #ifdef PLAY_WITH_KEEPALIVE    	
     int opt;
@@ -274,6 +280,8 @@ int main(int argc, char **argv) {
     doCopyRAMtoROM=0;
     doReadout=0;
     doSFBandSFC=0;
+    doSync=0;
+    doReadTime=0;
     doNewfunctions=0;
     doRouting=0;
     doList=0;
@@ -297,8 +305,13 @@ int main(int argc, char **argv) {
 	    printf("setting debug to: 0x%lx\n",atol(argv[adrPos]+8));
 	} else if (strcmp(argv[adrPos],"-s")==0) {
 	    doStop=1;
+	} else if (strcmp(argv[adrPos],"-t")==0) {
+	    doReadTime=1;
 	} else if (strcmp(argv[adrPos],"-r")==0) {
 	    doRun=1;
+	} else if (strncmp(argv[adrPos],"--many=",7)==0) {
+	    aLongDB=atol(argv[adrPos]+7);
+	    doTestMany=1;
 	} else if (strncmp(argv[adrPos],"--listall",9)==0) {
 	    doListall=1;
 	    doList=1;
@@ -358,7 +371,10 @@ int main(int argc, char **argv) {
 	} else
 	if (strcmp(argv[adrPos],"-m")==0) {
 	    doMultiple=1;
-	}
+	} else
+	if (strncmp(argv[adrPos],"--sync",6)==0) {
+	    doSync=1;
+	} 
 	adrPos++;
 	if (argc<=adrPos) {
 	    usage();
@@ -719,6 +735,25 @@ int main(int argc, char **argv) {
 		} // doWrite
 	    }	
 	} // doBenchmark
+	
+	if(doSync) {
+	    res=daveSetPLCTimeToSystime(dc);
+	    doReadTime=1;
+	    if (res!=0 && res!=10)
+		printf("*** Error: %04X = %s\n",res,daveStrerror(res));		
+	} // doSync
+	
+	if(doReadTime) {
+	    printf("read time: ");
+	    daveReadPLCTime(dc);
+	    for (i=0;i<10;i++) {
+		a=daveFromBCD(daveGetU8(dc));
+		printf("%d ",a);
+	    }
+	    printf("\n");
+	} // doReadTime
+	
+
 	closeSocket(fds.rfd);
 	printf("Finished.\n");
 	
