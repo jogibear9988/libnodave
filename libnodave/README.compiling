@@ -1,0 +1,48 @@
+How to compile in different enviroments:
+
+1. Linux on i386: Just type make. Type (as root) make install. This will:
+    copy libnodave.so to /usr/local/lib
+    copy nodave.h to /usr/local/include
+
+2. Linux on ARM: 
+    Uncomment the line: #CFLAGS+=-DARM_FIX in Makefile
+    For cross development, replace CC= and LD= with the appropriate paths to your ARM compiler
+    and linker.
+    Do make.
+    Either do make install or copy libnodave.so to the target system.
+
+3. Linux on MIPS: 
+    For cross development, replace CC= and LD= with the appropriate paths to your MIPS compiler
+    and linker.
+    Do make.
+    Either do make install or copy libnodave.so to the target system.
+
+4. Microsoft Visual C++
+    Adjust the path to nmake in vcwinmake.bat.
+    Adjust paths in MAKEFILE.VC to your installation.
+    Run batch file vcwinmake.bat.
+
+5. Borland Free Commandline Tools
+    Adjust the path to make in winmake.bat.
+    Adjust paths in MAKEFILE.MAK to your installation.
+    Run batch file winmake.bat.
+       
+6. Microsoft Visual C++ on LINUX under Wine
+    Adjust paths in MAKEFILE.VC.WINE to your installation.
+    Run make -f MAKEFILE.VC.WINE. This will use GNU make to build everything.
+
+7. Borland Free Commandline Tools on LINUX under Wine
+    Adjust the path to make in winemake script.
+    Adjust paths in MAKEFILE.MAK to your installation.
+    Run script winemake
+    
+Hint: I use 
+
+make -f MAKEFILE.VC.WINE 
+
+on a Linux box to compile the windows stuff. While I TRY to keep the other makefiles up to date,
+this file is where you should look and compare, when you have difficulties to reproduce the same
+results.
+    
+       
+    

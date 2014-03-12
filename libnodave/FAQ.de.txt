@@ -1,0 +1,98 @@
+Fragen, die mir schon oefter gestellt wurden und die Antworten:
+
+Q: Meine VB,.NET oder Delphi-Anwendung funktioniert nicht. Ich vermute, Libnodave funktioniert
+   nicht mit meiner Hardware oder funktioniert gar nicht. Kannst du mir helfen?
+A: Du kannst ganz einfach herausfinden, ob Libnodave mit deiner Hardware, SPS, Adapter
+   usw. arbeitet: Probierer es mit den vorkompilierten Testprogrammen. Wenn die nicht funktionieren
+   (auch die vorgeschlagenen Optionen probieren, wenn welche vorgeschlagen werden), ist es ganz
+   klar ein Fehler in Libnodave.
+   Wenn sie funktionieren, liegt es an deiner Anwendung (oder, selten, koennte das Problem in 
+   der Schnittstelle zu der verwendeten Programmiersprache liegen).
+
+Q: Kannst du mir helfen?
+A: Bevor du fragst, probiere die Testprogramme wie oben beschrieben. Wenn die bei dir nicht
+   funktionieren, schicke mir die Ausgabe mit der Debug-Option, z.B.:
+   testMPI -d COM1 >debugout.txt
+   Wenn sie funktionieren, deine Anwendung aber nicht, probier mal:
+   Fuege die Zeile "daveSetDebug(daveDebugAll)" vor allen anderen Aufrufen von Libnodave in
+   deinen Code ein.
+   Dann versuche:
+   deineAnwendung >debugout.txt
+   Fuer die Leute, die mit Maeusen gross wurden und die Kommandozeile nicht mehr kennen:
+   Das funktioniert sogar mit MS-Excel. Erzeuge eine neue Tabelle, importiere das VBA_Modul, 
+   - nimm das "rem" weg vor "call daveSetDebug(daveDebugAll)" am Anfang von sub initialize,
+   - Speichere das Arbeitsblatt.
+   - Starte dann von der Kommandozeile (Dos-Box, Ausfuehren/cmd):
+	excel testsheet >debugout.txt 
+   Alle Debug-Ausgaben gelangen in die Datei debugout.txt.
+   Wenn meine Zeit knapp wird, schmeisse ich Mails ohne Debug-Ausgabe weg!
+
+Q: Welches E-mail Format bevorzugst du?
+A: Na ja, niemand hat danach gefragt, aber ich ziehe PUREN TEXT vor.
+
+Q: Ich moechte auslesen, ob meine CPU in RUN oder STOP ist. Gibt es dafuer eine Funktion?
+A: Nein, keine spezialisierte. Verwende bei S7-300/400 daveReadSZL, um die SZL Systemzustandslisten
+   zu lesen. Step7 macht das auch so. Informationen ueber IDs und Indizes findest du in der Siemens 
+   Dokumentation. Der Zustand aller CPU-LEDs ist in ID 25 (19hex), index 0.
+   Bei der S7-200 befindet sich diese Information irgendwo in den Systemdaten.
+
+Q: Ich versuche, Libnodave mit einem Debugger nachzuvollziehen. Ich brauche Hilfe?
+A: Es gibt kaum einen Grund, Libnodave mit einem Debugger zu untersuchen, ausser du vermutest eine
+   der fogenden Sachen:
+   - Speicherprobleme (memory leaks)
+   - Bereichsueberschreitungen (range overflows) bei Zahlen oder Array-Indizes.
+   - Probleme bei der Uebergabe von Parametern an Bibliotheksfunktionen
+   Im letzteren Fall uebersetze besser Libnodave neu, nachdem du das Kommentarzeichen vor
+   #define DEBUG_CALLS in nodave.c entfernt hast.
+   Um Probleme mit SPS und Adaptern zu finden, ist die Debug-Ausgabe der weit bessere Weg. 
+   Sie zeigt dir alles, was von und zu SPS/Adapter gesendet und empfangen wird und sie
+   zeigt dir das, was wichtig ist, anstatt es aus Speicher und Registern herauszufinden.
+
+Q: Kannst du mir eine Dokumentation ueber die S7-Kommunikation oder das MPI-Protokoll geben?
+A: Nein, kann ich nicht. Was ich darueber weiss, stammt aus "reverse engineering". Das 
+   bedeutet, eine Menge Pakete mitzuschreiben, versuchen, einen Sinn hineinzuinterpretieren
+   und sie mit eigenem Code nachzubilden. Wenn in Libnodave Dinge Namen haben, so geben diese
+   meine gegenwaertige Hypothese wieder. Ich koennte versuchen, Dokumentation zu schreiben, aber
+   die wuerde immer einen Schritt hinter dem Code hinterherhinken: Der Code kann an der gegebenen 
+   Hardware, also an der Realitaet, getestet werden, die Dokumentation nicht. Und der Code ist
+   recht gut dokumentiert...
+
+Q: Also, warum gibt es diese komplizierten Strukturen (structs)?
+A: Was kompliziert erscheint, sind wahrscheinlich zunaechst die Zeiger auf protokollspezifische
+   Funktionen. In Wahrheit machen sie die Bibliothek einfacher in zweierlei Hinsicht:
+   - Erstens trennen sie die Bildung der Pakete vom Transport. Wenn jemand herausfindet, wie man
+     mit der S7 etwas neues machen kann, reicht es, die Paketbildung zu implementieren und schon
+     wird es hoechstwahrscheinlich mit jedem Transportprotokoll funktionieren. Wenn andererseits
+     ein neuer Transportmechanismus hinzukommt, werden wahrscheinlich alle Functionen damit 
+     funktionieren, sobald der Transport an sich funktioniert.
+     Version 0.8 zeigt das klar anhand der Implementierung des Transports ueber s7online.dll.
+   - Kommerzielle Bibliotheken, die ich gesehen habe, haben meist getrennte Saetze von Funktionen
+     fuer die 200 und die 300/400 Familie. Libnodave hat das nicht. So musst du weniger ueber das 
+     API der Bibliothek lernen waehrend deine Anwendung ohne Veraenderung des Codes mehr kann.
+
+Q: Warum exportierst du alle diese Strukturen, wenn du sagst, man braucht sie fuer keinerlei
+   Anwendung? 
+A: Sie sind nicht ganz bedeutungslos. Es sind auch eine Menge Funktionen dabei, die
+   "Zwischenschritte" duechfhren un normalerweise fr den Endanwender von keinem Nutzen sind.
+   Dennoch werden sie aus der .dll exportiert.
+   - Das ist alles verfuegbar - im Sinne von Open Source - fueer diejenigen, die eigene
+     Experimente machen wollen. Es mag ja Moeglichkeiten gebn, an die ich nicht gedacht habe.
+   - Wenigstens einmal konnte ich einem Benutzer helfen, eine neue Funktion (daveForce200) zu
+     implementiern. Er mute nur ca. 20 Zeilen in sein Programm einfuegen, die zum groessten Teil
+     solche Zwischenschritte beim Zusammenstellen eines Pakets und zur Analyse der Antwort
+     aufriefen, wie z.B. _daveAddData.
+
+Q: Warum gibts keine Funktionen wie readOutputs, readInputs, readData ?     
+   - Andere Bibliotheken haben ueblicherweise separate Functionen um Eingaenge, Ausgaenge,
+     Merker, Datenbausteine zu lesen. Libnodave hat das nicht. Schon wieder musst du weniger 
+     ueber das API lernen.
+Q: Warum gibt es keine Funktionen wie readBytes, readIntegers, readDWords, readFloat ?     
+   - Andere Bibliotheken haben oft separate Funktionen um Integers, Worte oder Fliesskomma-
+     zahlen zu lesen. Libnodave hat das nicht. Der Grund ist: Wenn du einen DB (oder einen
+     anderen Speicherbereich in der SPS) hast, der Daten verschiedener Types enthaelt, koenntest
+     du mit solchen Functionen nur Teile davon lesen. Oder du benutzt readBytes um den Speicher
+     als eine Reihe von Bytes zu lesen und bist bei der Umwandlung auf dich allein gestellt.
+     Libnodave liest generell den ganzen Block als Bytes und stellt dir dann Funktionen zur
+     Umwandlung von/in SPS-Datentypen und Byte-Anordnung zur Verfuegung.
+       
+       
