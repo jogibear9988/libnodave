@@ -211,11 +211,11 @@ int main(int argc, char **argv) {
 	    printf("1%06d%06d\n",rawLen,netLen);
 	    printf("0%X%05d\n",blockType,blockNumber);
 //	}
-	sprintf(pup+10,"0%X%05d",blockType,blockNumber);
-	sprintf(paInsert+12,"0%X%05d",blockType,blockNumber);
+	sprintf((char*)pup+10,"0%X%05d",blockType,blockNumber);
+	sprintf((char*)paInsert+12,"0%X%05d",blockType,blockNumber);
 	pup[17]='P';
 	paInsert[19]='P';
-	sprintf(pup+19,"1%06d%06d",rawLen,netLen);
+	sprintf((char*)pup+19,"1%06d%06d",rawLen,netLen);
 	if (daveGetDebug() & daveDebugPDU) {
 	    _daveDump("pup:",pup,sizeof(pup)-1);
 	}    
@@ -273,7 +273,7 @@ int main(int argc, char **argv) {
 #endif			
 			p.header=dc->msgOut+dc->PDUstartO;
 			_daveInitPDUheader(&p, 3);
-			if (res==maxPBlockLen) pablock[1]=1;	//more blocks
+			if ((unsigned int)res==maxPBlockLen) pablock[1]=1;	//more blocks
 			else {
 			    pablock[1]=0;	//last block
 			    blockCont=0;

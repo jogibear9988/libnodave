@@ -17,6 +17,11 @@
  along with this; see the file COPYING.  If not, write to
  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  
 */
+//#ifdef __cplusplus  // some people try to compile this with C++ compilers...
+		    // Then the linker will expect mangled names, but libnodave dont have them.
+//extern "C" {
+//#endif
+
 #include <termios.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -24,6 +29,7 @@
 #include <errno.h>
 #include <string.h>
 #include <ctype.h>
+#include "setport.h"
 #define debug 0
 #define ThisModule "setPort : "
 
@@ -107,6 +113,9 @@ int closePort(int port){
         res=close(port);
     return res;
 }
+//#ifdef __cplusplus  
+//    }		 
+//#endif
 
 /*
     Changes:

@@ -957,7 +957,7 @@ int main(int argc, char **argv) {
 	
 	if(doTestMany) {
 	    printf("read a long block of bytes from DB%d\n",aLongDB);
-	    buffer=malloc(2000);
+	    buffer=(uc*)malloc(2000);
 //	    res=daveReadBytes(dc,daveDB,aLongDB,0,2000,buffer);
 //	    printf("Result code: %04x=%s\n",res, daveStrerror(res));
 	    res=daveReadManyBytes(dc,daveDB,aLongDB,0,2000,buffer);

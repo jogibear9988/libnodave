@@ -42,6 +42,7 @@
 
 #include "log2.h"
 #include "nodave.h"
+#include "openSocket.h"
 
 extern int daveDebug;
 
@@ -70,9 +71,6 @@ int openSocket(const int port, const char * peer) {
     if (daveDebug & daveDebugOpen) {
 	LOG2(ThisModule "OpenSocket: socket is %d\n", fd);
     }	
-    if (daveDebug & daveDebugOpen) {
-	LOG3(ThisModule "setsockopt %s %d\n", strerror(errno),res);
-    }
     
     addrlen = sizeof(addr);
     if (connect(fd, (struct sockaddr *) & addr, addrlen)) {

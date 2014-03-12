@@ -166,7 +166,6 @@ int main(int argc, char **argv) {
 	doClear, doNewfunctions, doWbit,
 	initSuccess, doRun, doStop, doReadout, doList, doListall, doSFBandSFC,
 	doSync, doReadTime, doGetHeaders, doTestMany, doDump, aLongDB,
-	saveDebug,
 	res, speed, localMPI, plcMPI, plc2MPI, wbit, doReadDB, dbReadLen;
     PDU p;	
     float d;
@@ -548,7 +547,7 @@ int main(int argc, char **argv) {
 	
 	if(doTestMany) {
 	    printf("read a long block of bytes from DB%d\n",aLongDB);
-	    buffer=malloc(2000);
+	    buffer=(uc*)malloc(2000);
 //	    res=daveReadBytes(dc,daveDB,aLongDB,0,2000,buffer);
 //	    printf("Result code: %04x=%s\n",res, daveStrerror(res));
 	    res=daveReadManyBytes(dc,daveDB,aLongDB,0,2000,buffer);
@@ -557,7 +556,7 @@ int main(int argc, char **argv) {
 	
 	if(doDump) {
 	    printf("read a 64k of raw memory\n");
-	    buffer=malloc(65536);
+	    buffer=(uc*)malloc(65536);
 //	    res=daveReadBytes(dc,daveDB,aLongDB,0,2000,buffer);
 //	    printf("Result code: %04x=%s\n",res, daveStrerror(res));
 	    res=daveReadManyBytes(dc,daveRawMemoryS5,0,0,65536,buffer);

@@ -18,14 +18,13 @@
  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  
 */
 
-#ifndef __openSocket
-#define __openSocket
+
+#ifndef opensocket__
+#define opensocket__
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-
 
 #ifdef BCCWIN
 #ifdef DOEXPORT
@@ -45,7 +44,10 @@ int openSocket(const int port, const char * peer);
  }
 #endif
 
-#endif
+
+#endif //opensocket__
+
+
 /*
     Changes: 
     07/12/03  moved openSocket to it's own file, because it can be reused in other TCP clients

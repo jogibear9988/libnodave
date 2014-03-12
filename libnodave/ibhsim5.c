@@ -202,14 +202,14 @@ int handleLoadProgram(daveConnection *dc,PDU *p1, PDU *p2,int PDUnumber, uc*resp
     _daveAddParam(p2, pa, sizeof(pa));
     ls->typ=p1->param[11];
     printf("block type %s. ",daveBlockName(ls->typ));
-    ls->number=atol(p1->param+12);
+    ls->number=atol((char*)p1->param+12);
     ls->PDUnumber=1;
     printf("number: %d\n",ls->number);
     p1->param[26]=0;
-    ls->totlen=atol(p1->param+20);
+    ls->totlen=atol((char*)p1->param+20);
     ls->gotlen=0;
     printf("total size: %d\n",ls->totlen);
-    ls->content=malloc(ls->totlen);
+    ls->content=(uc*)malloc(ls->totlen);
     resp[22]=PDUnumber % 256;	// test!
     resp[21]=PDUnumber / 256;	// test!
     _daveDumpPDU(p2);    

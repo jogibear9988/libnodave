@@ -32,7 +32,7 @@
     show the minimum of structures and funtions you'll need to make known to your compiler.
 */
 
-#ifdef CPLUSPLUS
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -632,7 +632,7 @@ EXPORTSPEC uc DECL2 daveFromBCD(uc i);
 
 #endif /* _nodave */
 
-#ifdef CPLUSPLUS
+#ifdef __cplusplus
  }
 #endif
 
@@ -641,4 +641,5 @@ EXPORTSPEC uc DECL2 daveFromBCD(uc i);
     Changes: 
     04/10/05  first version.
     09/11/05  added read/write functions for long blocks of data.
+    10/26/07  fixed __cplusplus
 */

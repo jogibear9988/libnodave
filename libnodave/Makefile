@@ -1,4 +1,5 @@
 #
+# removed testUSB from programs. Use "make usb" to make it.
 # removed definitions for CYGWIN. There were no more differences versus LINUX
 #
 # These were the paths and names of the ARM cross compiling tools I tried:
@@ -8,12 +9,17 @@
 # LD=/usr/local/arm/2.95.3/bin/arm-linux-ld -Bstatic
 # LDFLAGS= -Wl,-Bstatic
 ##LD=ld
+#
+# To test with g++ which does stricter type checking:
+#
+##CC=g++ 
 CFLAGS=-Wall -Winline -DLINUX -DDAVE_LITTLE_ENDIAN
 CTFLAGS=-Wall -Winline -fPID -DLINUX -DDAVE_LITTLE_ENDIAN
 CPPFLAGS=-Wall -Winline -DLINUX -DDAVE_LITTLE_ENDIAN
 #
 # The following is needed to enable workarounds for statements that do
 # not work on (some?) ARM processors:
+# It also helped on some machine running HP-UX.
 #
 #CFLAGS+=-DARM_FIX 
 
@@ -25,7 +31,9 @@ testPPIload testMPIload ibhsim5 \
 isotest4 \
 testISO_TCPload testMPI_IBHload testPPI_IBHload testPPI_IBH \
 testNLpro \
-testAS511 testUSB
+testAS511 
+
+
 
 # testISO2
 # testMPImin
@@ -42,8 +50,10 @@ install: libnodave.so
 	cp nodave.h /usr/include
 	ldconfig
 dynamic: $(DYNAMIC_PROGRAMS)
+usb: testUSB
 
 nodave.o: nodave.h log2.h
+openSocket.o: openSocket.h nodave.h log2.h
 
 testISO_TCP.o: benchmark.c nodavesimple.h
 testPPI.o: benchmark.c nodavesimple.h

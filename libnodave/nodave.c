@@ -81,13 +81,13 @@ void setTimeOut(daveInterface * di, int tmo) {
 
 
 #ifdef HAVE_SELECT
-int DECL2 stdwrite(daveInterface * di, uc * buffer, int length) {
+int DECL2 stdwrite(daveInterface * di, char * buffer, int length) {
     if (daveDebug & daveDebugByte)
-	_daveDump("I send",buffer,length);
+	_daveDump("I send", (uc*)buffer, length);
     return write(di->fd.wfd, buffer,length);
 }
 
-int DECL2 stdread(daveInterface * di, uc * buffer, int length) {
+int DECL2 stdread(daveInterface * di, char * buffer, int length) {
     fd_set FDS;	
     struct timeval t;
     int i;
@@ -108,7 +108,7 @@ int DECL2 stdread(daveInterface * di, uc * buffer, int length) {
 #ifdef BCCWIN
 
 int DECL2 stdread(daveInterface * di,
-	 uc * buffer, 
+	 char * buffer, 
 	 int length) {
     unsigned long i;
     ReadFile(di->fd.rfd, buffer, length, &i, NULL);
@@ -117,13 +117,17 @@ int DECL2 stdread(daveInterface * di,
     return i;
 }
 
-int DECL2 stdwrite(daveInterface * di, uc * buffer, int length) {
+int DECL2 stdwrite(daveInterface * di, char * buffer, int length) {
     unsigned long i;
     if (daveDebug & daveDebugByte)
 	_daveDump("I send",buffer,length);
-    EscapeCommFunction(di->fd.rfd, CLRRTS);  // patch from Keith Harris. He says:
+//    EscapeCommFunction(di->fd.rfd, CLRRTS);  // patch from Keith Harris. He says:
 					     //******* this is what microwin does (needed for usb-serial)	
     WriteFile(di->fd.rfd, buffer, length, &i,NULL);
+// patch from Andrea. He says:
+// In this way the PC Adapter connected to CPU313C hangs waiting for RTS line before answering back.
+// Added the following to regain answers:
+//    EscapeCommFunction(di->fd.rfd, SETRTS);
     return i;
 }
 #endif 
@@ -769,13 +773,13 @@ int DECL2 _daveMemcmp(us * a, uc *b, size_t len) {
 /*
     Hex dump:
 */
-void DECL2 _daveDump(char * name,uc*b,int len) {
+void DECL2 _daveDump(char * name, void*b,int len) {//void DECL2 _daveDump(char * name,uc*b,int len) {
     int j;
     LOG2("%s: ",name);
     if (len>daveMaxRawLen) len=daveMaxRawLen; 	/* this will avoid to dump zillions of chars */
     for (j=0; j<len; j++){
 	if((j & 0xf)==0) LOG2("\n%x:",j);
-	LOG2("0x%02X,",b[j]);
+	LOG2("0x%02X,",((uc*)(b))[j]);
     }
     LOG1("\n");
 }
@@ -1166,7 +1170,8 @@ int DECL2 daveReadManyBytes(daveConnection * dc,int area, int DBnum, int start,i
     uc * pbuf;
     pos=0;
     if (buffer==NULL) return daveResNoBuffer;
-    pbuf=(uc*) buffer;
+    pbuf=(uc*) buffer; 
+    res=daveResInvalidLength; //the only chance to return this is when len<=0
     while (len>0) {
 	if (len>dc->maxPDUlength-18) readLen=dc->maxPDUlength-18; else readLen=len;
 	res=daveReadBytes(dc,area, DBnum, start, readLen, pbuf);
@@ -1551,6 +1556,7 @@ int DECL2 daveWriteManyBytes(daveConnection * dc,int area, int DBnum, int start,
     pos=0;
     if (buffer==NULL) return daveResNoBuffer;
     pbuf=(uc*) buffer;
+    res=daveResInvalidLength; //the only chance to return this is when len<=0
     while (len>0) {
 	if (len>dc->maxPDUlength-28) writeLen=dc->maxPDUlength-28; else writeLen=len;
 	res=daveWriteBytes(dc,area, DBnum, start, writeLen, pbuf);
@@ -1878,12 +1884,13 @@ float DECL2 daveGetFloatAt(daveConnection * dc, int pos) {
 }
 
 float DECL2 toPLCfloat(float ff) {
+#ifdef DAVE_LITTLE_ENDIAN    
     union {
 	float a;
 	uc b[4];
     } f;
     uc c;
-#ifdef DAVE_LITTLE_ENDIAN    
+
     f.a=ff;
     c=f.b[0];
     f.b[0]=f.b[3];
@@ -1891,14 +1898,20 @@ float DECL2 toPLCfloat(float ff) {
     c=f.b[1];
     f.b[1]=f.b[2];
     f.b[2]=c;
-#else    
+
     f.a=ff;
-#endif    
 #ifdef DEBUG_CALLS
     LOG3("toPLCfloat(%0.6f) = %0.6f\n",ff,f.a);
     FLUSH;
 #endif	    
     return (f.a);
+#else    
+#ifdef DEBUG_CALLS
+    LOG3("toPLCfloat(%0.6f) = %0.6f\n",ff,ff);
+    FLUSH;
+#endif	    
+    return ff;
+#endif        
 }
 
 int DECL2 daveToPLCfloat(float ff) {
@@ -1907,8 +1920,8 @@ int DECL2 daveToPLCfloat(float ff) {
 	uc b[4];
 	int c;
     } f;
-    uc c;
 #ifdef DAVE_LITTLE_ENDIAN    
+    uc c;
     f.a=ff;
     c=f.b[0];
     f.b[0]=f.b[3];
@@ -1937,16 +1950,16 @@ int DECL2 daveToKG(float ff) {
 	f.c=0;
 	return 0;
     }	
-    f2.c=ff;
+    f2.c=(int)ff;	// attention! what does this cast? I do want to take the integer part of that float, NOT reinterpret the bit pattern as int!
     LOG4("daveToKG(mantissa:0x%08X exponent:0x%02X %0.8f)\n", f2.c, kgExponent,ff);
     while (f2.c > 0x00400000){
 	ff/=2;
-	f2.c=ff;
+	f2.c=(int)ff;	// attention! what does this cast? I do want to take the integer part of that float, NOT reinterpret the bit pattern as int!
 	kgExponent++;
     }
     while (f2.c < 0x00400000){
 	ff*=2;
-	f2.c=ff;
+	f2.c=(int)ff;  	// attention! what does this cast? I do want to take the integer part of that float, NOT reinterpret the bit pattern as int!
 	kgExponent--;
     }
     LOG4("daveToKG(mantissa:0x%08X exponent:0x%02X %0.8f)\n", f2.c, kgExponent,ff);
@@ -2109,7 +2122,7 @@ void DECL2 _daveSendSingle(daveInterface * di,	/* serial interface */
 		     uc c  			/* chracter to be send */
 		     ) 
 {
-    di->ifwrite(di, &c, 1);
+    di->ifwrite(di, (char*)&c, 1);
 }
 
 int DECL2 _daveReadSingle(daveInterface * di) {
@@ -2127,7 +2140,7 @@ int DECL2 _daveReadMPI(daveInterface * di, uc *b) {
 	uc bcc=0;
 rep:	
 	{	
-	    nr_read= di->ifread(di, b+res, 1);
+	    nr_read= di->ifread(di, (char*)(b+res), 1);
 	    if (nr_read==0) return 0;
 	    res+=nr_read;
 	    if ((res==1) && (*(b+res-1)==DLE)) {
@@ -2226,7 +2239,7 @@ int DECL2 _daveReadChars2(daveInterface * di,	/* serial interface */
 		    int max		/* limit */
 		)
 {
-    return di->ifread(di,b,max);
+    return di->ifread(di,(char*)b,max);
 }
 
 /* 
@@ -2254,7 +2267,7 @@ int DECL2 _daveSendWithCRC(daveInterface * di, /* serial interface */
     target[targetSize+2]=bcc;
     targetSize+=3;
 //    daveWriteFile(di->fd.wfd, target, targetSize, wr);
-    di->ifwrite(di, target, targetSize);
+    di->ifwrite(di, (char*)target, targetSize);
     if (daveDebug & daveDebugPacket)
 	    _daveDump("_daveSendWithCRC",target, targetSize);
     return 0;
@@ -2963,7 +2976,7 @@ int daveSendWithCRC3(daveInterface * di, uc* buffer,int length) {
     target[4+length]=crc % 256;
     target[5+length]=crc / 256;
     target[6+length]=0x7e;
-    di->ifwrite(di, target,length+7);
+    di->ifwrite(di, (char*)target, length+7);
     return 0;
 }
 
@@ -2973,14 +2986,14 @@ int read1(daveInterface * di, uc* b) {
 	LOG1("enter read1\n");
     len=0;
 again:    
-    res=di->ifread(di, b, 5);
+    res=di->ifread(di, (char*)b, 5);
     if (res==5) {
 	if(b[4]==0x7e) goto again;    
 	if(b[2]==255-b[3])  {
 	    len=b[2]+7;
 //	    LOG2("need length %d\n",len);
 	    while (res<len) {
-		res+=di->ifread(di, b+res, len-res);
+		res+=di->ifread(di, (char*)(b+res), len-res);
 	    }
 	}
     }
@@ -3024,15 +3037,15 @@ again:
     count++;
     if (count>20) return -2;
     di->seqNumber=0x77;
-    di->ifwrite(di, b2,sizeof(b2));
-    res=di->ifread(di, b1, 5);
+    di->ifwrite(di, (char*)b2, sizeof(b2));
+    res=di->ifread(di, (char*)b1, 5);
     if (res==0) {
-	di->ifwrite(di, b2,sizeof(b2));
-	res=di->ifread(di, b1, 5);
+	di->ifwrite(di, (char*)b2, sizeof(b2));
+	res=di->ifread(di, (char*)b1, 5);
     }
     if (res==0) {
-	di->ifwrite(di, b2,sizeof(b2));
-	res=di->ifread(di, b1, 5);
+	di->ifwrite(di, (char*)b2,sizeof(b2));
+	res=di->ifread(di, (char*)b1, 5);
     }	
     if (daveDebug & daveDebugByte)
 	_daveDump("got", b1, res);
@@ -3049,8 +3062,8 @@ again:
 	} else if (b1[1]==0xF8) {
 	    if (daveDebug & daveDebugInitAdapter)
 		LOG1("refused.\n");
-	    di->ifwrite(di, m4,sizeof(m4));
-	    res=di->ifread(di, b1, 100);
+	    di->ifwrite(di, (char*)m4, sizeof(m4));
+	    res=di->ifread(di, (char*)b1, 100);
 	    goto again;
 	} else if (b1[1]==0x8a) {
 	    if (daveDebug & daveDebugInitAdapter)
@@ -4029,7 +4042,7 @@ void DECL2 _daveSendLength(daveInterface * di, int len) {
     uc c[]={104,0,0,104};
     c[1]=len;
     c[2]=len;
-    di->ifwrite(di, c, 4);
+    di->ifwrite(di, (char *)c, 4);
     if ((daveDebug & daveDebugByte)!=0) {
 	_daveDump("I send", c, 4);
     }	
@@ -4046,7 +4059,7 @@ void DECL2 _daveSendIt(daveInterface * di, uc * b, int size) {
     size++;
     b[size]=SYN;
     size++;
-    di->ifwrite(di, b, size);
+    di->ifwrite(di, (char*)b, size);
     
     if ((daveDebug & daveDebugByte)!=0) {
 	LOG2("send %d\n",i);
@@ -4059,7 +4072,7 @@ void DECL2 _daveSendRequestData(daveConnection * dc,int alt) {
     b[1]=dc->MPIAdr;
     b[2]=dc->iface->localMPI;
     if(alt) b[3]=0x7c; else b[3]=0x5c;
-    dc->iface->ifwrite(dc->iface, b, 1);
+    dc->iface->ifwrite(dc->iface, (char*)b, 1);  //cs: 
     _daveSendIt(dc->iface, b+1, sizeof(b)-3);
 }
 
@@ -4773,7 +4786,7 @@ void DECL2 _daveConstructWriteResponse(PDU * p) {
 
 void DECL2 _daveHandleRead(PDU * p1,PDU * p2) {
     int result;
-    uc * userBytes;
+    uc * userBytes=NULL; //is this really better than reading from a dangling pointer?
     int bytes=0x100*p1->param[6]+p1->param[7];
     int DBnumber=0x100*p1->param[8]+p1->param[9];
     int area=p1->param[10];
@@ -4813,7 +4826,7 @@ void DECL2 _daveHandleWrite(PDU * p1,PDU * p2) {
 		when the first call to readChars returned less then 4 characters.
 */
 
-int DECL2 _daveWriteIBH(daveInterface * di, void * buffer, int len) {
+int DECL2 _daveWriteIBH(daveInterface * di, uc * buffer, int len) { //cs: let it be uc 
     int res;
     if (daveDebug & daveDebugByte) {
 	_daveDump("writeIBH: ", buffer, len);
@@ -4891,7 +4904,10 @@ int DECL2 __daveAnalyze(daveConnection * dc) {
     IBHpacket * p, *p2;
     MPIheader * pm;
     MPIheader2 * m2;
-    PDU p1,pr;
+    PDU p1;
+#ifdef passiveMode    
+    PDU pr;
+#endif    
     uc resp[2000];
     
 //    if (dc->AnswLen==0) return _davePtEmpty;
@@ -4920,8 +4936,10 @@ int DECL2 __daveAnalyze(daveConnection * dc) {
 		LOG2("MPI packet number: %d needs ackknowledge\n",pm->packetNumber);
 	    dc->needAckNumber=pm->packetNumber;
 	    _daveSetupReceivedPDU(dc, &p1);
+#ifdef passiveMode
 // construct response:	    
 	    pr.header=resp+sizeof(IBHpacket)+sizeof(MPIheader2);
+#endif	    
 	    p2= (IBHpacket*) resp;
 	    p2->ch1=p->ch2;
 	    p2->ch2=p->ch1;
@@ -4940,15 +4958,15 @@ int DECL2 __daveAnalyze(daveConnection * dc) {
 #ifdef passiveMode	    
 		_daveHandleRead(&p1,&pr);
 		haveResp=1;
+		m2->len=pr.hlen+pr.plen+pr.dlen+2; 
 #endif
-		m2->len=pr.hlen+pr.plen+pr.dlen+2;
 		p2->len=m2->len+7;
 	    } else if (p1.param[0]==daveFuncWrite) {
-#ifdef passiveMode	    
+#ifdef passiveMode
 		_daveHandleWrite(&p1,&pr);
 		haveResp=1;
-#endif		
 		m2->len=pr.hlen+pr.plen+pr.dlen+2;
+#endif		
 		p2->len=m2->len+7;
 	    } else {
 		if (daveDebug & daveDebugPDU)    
@@ -5054,6 +5072,7 @@ int DECL2 _daveSendMessageMPI_IBH(daveConnection * dc, PDU * p) {
 int DECL2 _daveGetResponseMPI_IBH(daveConnection * dc) {
     int res,count,pt;
     count=0;
+    pt=0;
     do {
 	res=_daveReadIBHPacket(dc->iface, dc->msgIn);
 	count++;
@@ -5073,10 +5092,10 @@ int DECL2 _daveGetResponseMPI_IBH(daveConnection * dc) {
     It will then wait for a packet and compare it to the sample.
 */
 int DECL2 _daveInitStepIBH(daveInterface * iface, uc * chal, int cl, us* resp,int rl, uc*b) {
-    int res,res2,a=0;
+    int res, res2, a=0;
     if (daveDebug & daveDebugConnect) 
 	LOG1("_daveInitStepIBH before write.\n");
-    if (chal) res=_daveWriteIBH(iface, chal, cl);
+    if (chal) res=_daveWriteIBH(iface, chal, cl);else res=daveResInvalidParam;
     if (daveDebug & daveDebugConnect) 
 	LOG2("_daveInitStepIBH write returned %d.\n",res);
     if (res<0) return 100;
@@ -5547,7 +5566,7 @@ void DECL2 daveFree(void * dc) {
 
 int DECL2 daveGetProgramBlock(daveConnection * dc, int blockType, int number, char* buffer, int * length) {
     int res, uploadID, len, more, totlen;
-    uc *bb=buffer;
+    uc *bb=(uc*)buffer;	//cs: is this right?
     len=0;
     totlen=0;
     if (dc->iface->protocol==daveProtoAS511) {	    
@@ -5574,7 +5593,7 @@ int DECL2 daveReadPLCTime(daveConnection * dc) {
     LOG2("daveGetTime(dc:%p)\n", dc);
     FLUSH;
 #endif	    	
-    res=daveBuildAndSendPDU(dc, &p2,pa, sizeof(pa), NULL, 1);
+    len=0;res=daveBuildAndSendPDU(dc, &p2,pa, sizeof(pa), NULL, 1);
     if (res==daveResOK) {
         dc->resultPointer=p2.udata;
         dc->_resultPointer=p2.udata;
@@ -5595,6 +5614,7 @@ int DECL2 daveSetPLCTime(daveConnection * dc,uc * ts) {
     LOG2("daveSetTime(dc:%p)\n", dc);
     FLUSH;
 #endif	    	
+    len=0;
     res=daveBuildAndSendPDU(dc, &p2,pa, sizeof(pa), ts, 10);
     if (res==daveResOK) {
         dc->resultPointer=p2.udata;
@@ -5678,6 +5698,7 @@ int DECL2 daveSetPLCTimeToSystime(daveConnection * dc) {
     LOG2("SetPLCTimeToSystime(dc:%p)\n", dc);
     FLUSH;
 #endif	    	
+    len=0;
     res=daveBuildAndSendPDU(dc, &p2,pa, sizeof(pa), ts, sizeof(ts));
     if (res==daveResOK) {
         dc->resultPointer=p2.udata;
@@ -5698,7 +5719,7 @@ int DECL2 daveSetPLCTimeToSystime(daveConnection * dc) {
 
 uc __davet2[]={STX};
 uc __davet10[]={DLE};
-uc __davet1006[]={DLE,ACK};
+char __davet1006[]={DLE,ACK};  // cs: this is only sent by system functions, so let it be char
 us __daveT1006[]={DLE,ACK};
 uc __davet121003[]={0x12,DLE,ETX};
 us __daveT121003[]={0x12,DLE,ETX};
@@ -5804,8 +5825,8 @@ int DECL2 _daveSendWithDLEDup(daveInterface * di, // serial interface
     target[targetSize+1]=EOT;
     targetSize+=2;
     if(daveDebug & daveDebugExchange)
-	_daveDump("I send",target,targetSize);
-    res=di->ifwrite(di, target, targetSize);
+	_daveDump("I send", target, targetSize);
+    res=di->ifwrite(di, (char*)target, targetSize);
     if(daveDebug & daveDebugExchange)
 	LOG2("send: res:%d\n",res);
     return 0;
@@ -5816,7 +5837,7 @@ int DECL2 _daveSendWithDLEDup(daveInterface * di, // serial interface
 */
 int DECL2 _daveReqTrans(daveConnection * dc, uc trN)
 {
-    char b1[3];
+    uc b1[3];
     int res;
     if (daveDebug & daveDebugExchange)
 	    LOG3("%s daveReqTrans %d\n", dc->iface->name, trN);
@@ -5854,7 +5875,7 @@ int DECL2 _daveReqTrans(daveConnection * dc, uc trN)
 int DECL2 _daveEndTrans(daveConnection * dc)
 {
     int res;
-    char b1[3];
+    uc b1[3];
     if (daveDebug & daveDebugExchange)
 	LOG2("%s daveEndTrans\n", dc->iface->name);
     if (_daveReadSingle(dc->iface)!=STX) {
@@ -5894,7 +5915,7 @@ int DECL2 _daveDLEDeDup(daveConnection * dc, uc* rawBuf, int rawLen) {
 
 int DECL2 _daveExchangeAS511(daveConnection * dc, uc * b, int len, int maxlen, int trN) {
     int res, i;
-    char b1[3];
+    uc b1[3];
     res=_daveReqTrans(dc, trN);
     if (res<0) {
         LOG2("%s *** Error in Exchange.ReqTrans request.\n", dc->iface->name);
@@ -6241,9 +6262,9 @@ int DECL2 daveStartS5(daveConnection * dc) {
 }
 
 int DECL2 daveGetS5ProgramBlock(daveConnection * dc, int blockType, int number, char* buffer, int * length) {
-    int totlen,res;
-    *length=totlen;
-    return res;
+//    int totlen,res;
+//    *length=totlen;
+    return daveResNotYetImplemented;
 }
 
 
@@ -6260,7 +6281,7 @@ int DECL2 daveGetS5ProgramBlock(daveConnection * dc, int blockType, int number, 
 /*
     fill some standard fields and pass it to SCP-send:
 */
-int DECL2 _daveSCP_send(int fd, char * reqBlock) {
+int DECL2 _daveSCP_send(int fd, uc * reqBlock) {
     S7OexchangeBlock* fdr;
     fdr=(S7OexchangeBlock*)reqBlock;
     fdr->headerlength=80;
@@ -6428,7 +6449,7 @@ int DECL2 _daveListReachablePartnersS7online (daveInterface * di, char * buf) {
     fdr->payloadLength= 60;
     fdr->functionCode= 0x28;
 
-    a= _daveSCP_send((int)(di->fd.wfd), (char *) &reqBlock);
+    a= _daveSCP_send((int)(di->fd.wfd), (uc *) &reqBlock);
     daveSCP_receive((int)(di->fd.rfd), b1);
 
     fdr->number= 103;
@@ -6437,7 +6458,7 @@ int DECL2 _daveListReachablePartnersS7online (daveInterface * di, char * buf) {
     fdr->field8= 16642;
     fdr->functionCode= 0x17;
 
-    a= _daveSCP_send((int)(di->fd.wfd), (char *) &reqBlock);
+    a= _daveSCP_send((int)(di->fd.wfd), (uc *) &reqBlock);
     daveSCP_receive((int)(di->fd.rfd), b1);
     memset(fdr,0,140);
 
@@ -6447,7 +6468,7 @@ int DECL2 _daveListReachablePartnersS7online (daveInterface * di, char * buf) {
     fdr->field8= 16642;
     fdr->payloadLength= 60;
     fdr->functionCode= 0x28;
-    a= _daveSCP_send((int)(di->fd.wfd), (char *) &reqBlock);
+    a= _daveSCP_send((int)(di->fd.wfd), (uc *) &reqBlock);
     daveSCP_receive((int)(di->fd.rfd), b1);
 
     memset(fdr,0,208);
@@ -6457,7 +6478,7 @@ int DECL2 _daveListReachablePartnersS7online (daveInterface * di, char * buf) {
     fdr->field8 =16642;
     fdr->payloadLength= 128;
     fdr->functionCode= 0x1a;
-    a= _daveSCP_send((int)(di->fd.wfd), (char *) &reqBlock);
+    a= _daveSCP_send((int)(di->fd.wfd), (uc *) &reqBlock);
     daveSCP_receive((int)(di->fd.rfd), b1);
     
     memcpy(buf,b1+80,126);
@@ -6943,6 +6964,14 @@ int DECL2 _daveListReachablePartnersNLpro(daveInterface * di,char * buf) {
 	return 0;	
 }   
 
+_openFunc SCP_open;
+_closeFunc SCP_close;
+_sendFunc SCP_send;
+_receiveFunc SCP_receive;
+//_SetHWndMsgFunc SetSinecHWndMsg;
+//_SetHWndFunc SetSinecHWnd;
+_get_errnoFunc SCP_get_errno;
+
 
 /*
     Changes: 
@@ -7033,4 +7062,5 @@ int DECL2 _daveListReachablePartnersNLpro(daveInterface * di,char * buf) {
     11/21/06  Hope to have fixed PDU length problem with IBHLink reported by Axel Kinting.
 
     01/04/07  Set last byte of resp09 to don't care as reported by Axel Kinting.
+    02/07/08  Removed patch from Keith Harris for RTS line.
 */

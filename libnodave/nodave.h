@@ -238,6 +238,9 @@ typedef struct dost {
 #define daveResUnknownDataUnitSize -129
 #define daveResNoBuffer -130
 #define daveNotAvailableInS5 -131
+#define daveResInvalidLength -132
+#define daveResInvalidParam -133
+#define daveResNotYetImplemented -134
 
 #define daveResShortPacket -1024 
 #define daveResTimeout -1025 
@@ -246,13 +249,13 @@ typedef struct dost {
     Error code to message string conversion:
     Call this function to get an explanation for error codes returned by other functions.
 */
-EXPORTSPEC char * DECL2 daveStrerror(int code);
+EXPORTSPEC char * DECL2 daveStrerror(int code); // result is char because this is usual for strings
 
 /*
     Copy an internal String into an external string buffer. This is needed to interface
     with Visual Basic. Maybe it is helpful elsewhere, too.
 */
-EXPORTSPEC void DECL2 daveStringCopy(char * intString, char * extString);
+EXPORTSPEC void DECL2 daveStringCopy(char * intString, char * extString); // args are char because this is usual for strings
 
 
 /* 
@@ -354,13 +357,13 @@ typedef int (DECL2 * _disconnectAdapterFunc) (daveInterface * );
 typedef int (DECL2 * _exchangeFunc) (daveConnection *, PDU *);
 typedef int (DECL2 * _sendMessageFunc) (daveConnection *, PDU *);
 typedef int (DECL2 * _getResponseFunc) (daveConnection *);
-typedef int (DECL2 * _listReachablePartnersFunc) (daveInterface * di, char * buf);
+typedef int (DECL2 * _listReachablePartnersFunc) (daveInterface * di, char * buf); // changed to unsigned char because it is a copy of an uc buffer
 
 /*
     Definitions of prototypes for i/O functions.
 */
-typedef int (DECL2 *  _writeFunc) (daveInterface *, uc *, int);
-typedef int (DECL2 *  _readFunc) (daveInterface *, uc *, int);
+typedef int (DECL2 *  _writeFunc) (daveInterface *, char *, int); // changed to char because char is what system read/write expects
+typedef int (DECL2 *  _readFunc) (daveInterface *, char *, int);
 
 /* 
     This groups an interface together with some information about it's properties
@@ -592,13 +595,14 @@ EXPORTSPEC int DECL2 _daveMemcmp(us * a, uc *b, size_t len);
 /*
     Hex dump. Write the name followed by len bytes written in hex and a newline:
 */
-EXPORTSPEC void DECL2 _daveDump(char * name,uc*b,int len);
+//EXPORTSPEC void DECL2 _daveDump(char * name, uc *b, int len);
+EXPORTSPEC void DECL2 _daveDump(char * name, void *b, int len);
 
 /*
     names for PLC objects:
 */
-EXPORTSPEC char * DECL2 daveBlockName(uc bn);
-EXPORTSPEC char * DECL2 daveAreaName(uc n);
+EXPORTSPEC char * DECL2 daveBlockName(uc bn);  // char or uc,to decide
+EXPORTSPEC char * DECL2 daveAreaName(uc n); // to decide
 
 /*
     swap functions. These swap function do a swao on little endian machines only:
@@ -693,7 +697,7 @@ EXPORTSPEC int DECL2 daveGetCounterValueAt(daveConnection * dc,int pos);
 /*
     Functions to load blocks from PLC:
 */
-EXPORTSPEC void DECL2 _daveConstructUpload(PDU *p,char blockType, int blockNr);
+EXPORTSPEC void DECL2 _daveConstructUpload(PDU *p, char blockType, int blockNr); // char or uc,to decide
 
 EXPORTSPEC void DECL2 _daveConstructDoUpload(PDU * p, int uploadID);
 
@@ -704,7 +708,7 @@ EXPORTSPEC void DECL2 _daveConstructEndUpload(PDU * p, int uploadID);
 */
 
 #define daveOrderCodeSize 21
-EXPORTSPEC int DECL2 daveGetOrderCode(daveConnection * dc,char * buf);
+EXPORTSPEC int DECL2 daveGetOrderCode(daveConnection * dc, char * buf); // char, users buffer, or to decide
 
 /*
     connect to a PLC. returns 0 on success.
@@ -795,7 +799,7 @@ EXPORTSPEC int DECL2 daveGetBlockInfo(daveConnection * dc, daveBlockInfo *dbi, u
 /*
     PLC program read functions:
 */
-EXPORTSPEC int DECL2 initUpload(daveConnection * dc,char blockType, int blockNr, int * uploadID);
+EXPORTSPEC int DECL2 initUpload(daveConnection * dc, char blockType, int blockNr, int * uploadID); // char or uc,to decide
 EXPORTSPEC int DECL2 doUpload(daveConnection*dc, int * more, uc**buffer, int*len, int uploadID);
 EXPORTSPEC int DECL2 endUpload(daveConnection*dc, int uploadID);
 /*
@@ -854,11 +858,11 @@ EXPORTSPEC int DECL2 daveConnectPLC(daveConnection * dc);
 EXPORTSPEC int DECL2 daveDisconnectPLC(daveConnection * dc);
 
 EXPORTSPEC int DECL2 daveDisconnectAdapter(daveInterface * di);
-EXPORTSPEC int DECL2 daveListReachablePartners(daveInterface * di,char * buf);
+EXPORTSPEC int DECL2 daveListReachablePartners(daveInterface * di, char * buf);
 
 EXPORTSPEC int DECL2 _daveReturnOkDummy(daveInterface * di);
 EXPORTSPEC int DECL2 _daveReturnOkDummy2(daveConnection * dc);
-EXPORTSPEC int DECL2 _daveListReachablePartnersDummy(daveInterface * di,char * buf);
+EXPORTSPEC int DECL2 _daveListReachablePartnersDummy(daveInterface * di, char * buf);
 
 EXPORTSPEC int DECL2 _daveNegPDUlengthRequest(daveConnection * dc, PDU *p);
 
@@ -870,7 +874,7 @@ EXPORTSPEC int DECL2 _daveNegPDUlengthRequest(daveConnection * dc, PDU *p);
 #define daveMPIunused 0x10
 #define davePartnerListSize 126
 
-EXPORTSPEC int DECL2 _daveListReachablePartnersMPI(daveInterface * di,char * buf);
+EXPORTSPEC int DECL2 _daveListReachablePartnersMPI(daveInterface * di, char * buf);
 EXPORTSPEC int DECL2 _daveInitAdapterMPI1(daveInterface * di);
 EXPORTSPEC int DECL2 _daveInitAdapterMPI2(daveInterface * di);
 EXPORTSPEC int DECL2 _daveConnectPLCMPI1(daveConnection * dc);
@@ -943,7 +947,7 @@ EXPORTSPEC void DECL2 _daveHandleWrite(PDU * p1,PDU * p2);
     make internal IBH functions available for experimental use:
 */
 EXPORTSPEC int DECL2 _daveReadIBHPacket(daveInterface * di,uc *b);
-EXPORTSPEC int DECL2 _daveWriteIBH(daveInterface * di, void * buffer, int len);
+EXPORTSPEC int DECL2 _daveWriteIBH(daveInterface * di, uc * buffer, int len);
 EXPORTSPEC int DECL2 _davePackPDU(daveConnection * dc,PDU *p);
 EXPORTSPEC void DECL2 _daveSendMPIAck_IBH(daveConnection*dc);
 EXPORTSPEC void DECL2 _daveSendIBHNetAck(daveConnection * dc);
@@ -1050,10 +1054,10 @@ EXPORTSPEC int DECL2 _daveSendMessageMPI3(daveConnection * dc, PDU * p);
     Prototypes for the functions in S7onlinx.dll:
     They are guessed.
 */
-typedef int (DECL2 * _openFunc) (const char *);
+typedef int (DECL2 * _openFunc) (const uc *);
 typedef int (DECL2 * _closeFunc) (int);
-typedef int (DECL2 * _sendFunc) (int, us, char *);
-typedef int (DECL2 * _receiveFunc) (int, us, int *, us, char *);
+typedef int (DECL2 * _sendFunc) (int, us, uc *);
+typedef int (DECL2 * _receiveFunc) (int, us, int *, us, uc *);
 //typedef int (DECL2 * _SetHWndMsgFunc) (int, int, ULONG);
 //typedef int (DECL2 * _SetHWndFunc) (int, HANDLE);
 typedef int (DECL2 * _get_errnoFunc) (void);
@@ -1065,13 +1069,13 @@ typedef int (DECL2 * _get_errnoFunc) (void);
     3. Libnodave shall remain useable without Siemens .dlls. So it shall not try to access them
        unless the user chooses the daveProtoS7online transport.
 */
-_openFunc SCP_open;
-_closeFunc SCP_close;
-_sendFunc SCP_send;
-_receiveFunc SCP_receive;
+extern _openFunc SCP_open;
+extern _closeFunc SCP_close;
+extern _sendFunc SCP_send;
+extern _receiveFunc SCP_receive;
 //_SetHWndMsgFunc SetSinecHWndMsg;
 //_SetHWndFunc SetSinecHWnd;
-_get_errnoFunc SCP_get_errno;
+extern _get_errnoFunc SCP_get_errno;
 /*
     A block of data exchanged between S7onlinx.dll and a program using it. Most fields seem to 
     be allways 0. Meaningful names are guessed.
@@ -1103,17 +1107,17 @@ typedef struct {
     uc          payload[520];
 } S7OexchangeBlock;
 
-EXPORTSPEC int DECL2 _daveCP_send(int fd, int len, char * reqBlock);
-EXPORTSPEC int DECL2 _daveSCP_send(int fd, char * reqBlock);
+EXPORTSPEC int DECL2 _daveCP_send(int fd, int len, uc * reqBlock);
+EXPORTSPEC int DECL2 _daveSCP_send(int fd, uc * reqBlock);
 EXPORTSPEC int DECL2 _daveConnectPLCS7online (daveConnection * dc);
-EXPORTSPEC int DECL2 _daveSendMessageS7online(daveConnection *dc, PDU *p);
-EXPORTSPEC int DECL2 _daveGetResponseS7online(daveConnection *dc);
+EXPORTSPEC int DECL2 _daveSendMessageS7online(daveConnection * dc, PDU *p);
+EXPORTSPEC int DECL2 _daveGetResponseS7online(daveConnection * dc);
 EXPORTSPEC int DECL2 _daveExchangeS7online(daveConnection * dc, PDU * p);
 EXPORTSPEC int DECL2 _daveListReachablePartnersS7online (daveInterface * di, char * buf);
 EXPORTSPEC int DECL2 _daveDisconnectAdapterS7online(daveInterface * di);
 
-EXPORTSPEC int DECL2 stdwrite(daveInterface * di, uc * buffer, int length);
-EXPORTSPEC int DECL2 stdread(daveInterface * di, uc * buffer, int length);
+EXPORTSPEC int DECL2 stdwrite(daveInterface * di, char * buffer, int length);
+EXPORTSPEC int DECL2 stdread(daveInterface * di, char * buffer, int length);
 
 EXPORTSPEC int DECL2 _daveInitAdapterNLpro(daveInterface * di);
 EXPORTSPEC int DECL2 _daveInitStepNLpro(daveInterface * iface, int nr, uc* fix, int len, char*caller, uc * buffer);

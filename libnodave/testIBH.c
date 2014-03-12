@@ -81,8 +81,8 @@ void usage()
 void wait() {
     uc c;
 #ifdef UNIX_STYLE
-    printf("Press return to continue.\n");
-    read(0,&c,1);
+//    printf("Press return to continue.\n");
+//    read(0,&c,1);
 #endif    
 //#ifdef WIN_STYLE
 //    printf("Press return to continue.\n");
