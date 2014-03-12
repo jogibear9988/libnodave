@@ -29,7 +29,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "nodavesimple.h"
+//#include "nodavesimple.h"
+#include "nodave.h"
 #include "openSocket.h"
 
 #ifdef LINUX
@@ -155,6 +156,10 @@ void usage()
     printf("-s stops the PLC.\n");
     printf("-r tries to put the PLC in run mode.\n");
     printf("--readout read program and data blocks from PLC.\n");
+    printf("--route=subnetId,subnetId,PLC address. Try routing. ");
+    printf("	subnetID are the two values you see in Step7 or NetPro. PLC address is a number (MPI,Profibus) or an IP adress.\n");
+    printf("	Examples: --route=0x0125,0x0013,1 connects to PLC 1 in an MPI/Profibus subnet.\n");
+    printf("	Examples: --route=0x0125,0x0013,192.168.1.51 connects to PLC with IP 192.168.1.51 in an Ethernet subnet.\n");
     printf("--readoutall read all program and data blocks from PLC. Includes SFBs and SFCs.\n");
     printf("--slot=<number> sets slot for PLC (default is 2).\n");
     printf("--ram2rom tries to Copy RAM to ROM.\n");    
@@ -162,7 +167,8 @@ void usage()
     printf("Example: testISO_TCP -w 192.168.19.1\n");
 }
 
-void loadBlocksOfType(daveConnection * dc, int blockType) {
+
+void loadBlocksOfType(daveConnection * dc, int blockType, int doReadout) {
     int j, i, uploadID, len, more;
 #ifdef UNIX_STYLE
     int fd;
@@ -172,7 +178,7 @@ void loadBlocksOfType(daveConnection * dc, int blockType) {
     unsigned long res;
 #endif	        
     char blockName [20];
-    uc blockBuffer[20000],*bb;
+    uc blockBuffer[70000],*bb;
     daveBlockEntry dbe[256];   
     j=daveListBlocksOfType(dc, blockType, dbe);
     if (j<0) {
@@ -180,11 +186,13 @@ void loadBlocksOfType(daveConnection * dc, int blockType) {
 	return;
     }
     printf("%d blocks of type %s\n",j,daveBlockName(blockType));
+    
     for (i=0; i<j; i++) {
 	printf("%s%d  %d %d\n",
 	    daveBlockName(blockType),
 	    dbe[i].number, dbe[i].type[0],dbe[i].type[1]);	
 	bb=blockBuffer;
+	if(doReadout) {	
 	len=0;
 	if (0==initUpload(dc, blockType, dbe[i].number, &uploadID)) {
     	    do {
@@ -203,10 +211,29 @@ void loadBlocksOfType(daveConnection * dc, int blockType) {
     	    WriteFile(fd, blockBuffer, len, &res, NULL);
     	    CloseHandle(fd);
 #endif	    
-
     	    endUpload(dc,uploadID);
-	}    
+	} 
+    }	
     }
+}
+
+void getBlockHeadersOfType(daveConnection * dc, int blockType) {
+    int j, i;
+    daveBlockEntry dbe[256]; 
+    j=daveListBlocksOfType(dc, blockType, dbe);
+    if (j<0) {
+	printf("error %d = %s\n",-j,daveStrerror(-j));
+	return;
+    }
+    printf("%d blocks of type %s\n",j,daveBlockName(blockType));
+    
+    for (i=0; i<j; i++) {
+	printf("%s%d  %d %d\n",
+	    daveBlockName(blockType),
+	    dbe[i].number, dbe[i].type[0],dbe[i].type[1]);	
+	daveGetBlockInfo(dc, NULL, blockType,dbe[i].number);
+	_daveDump("header",dc->_resultPointer,78);
+    }	
 }
 
 #include "benchmark.c"
@@ -214,7 +241,7 @@ void loadBlocksOfType(daveConnection * dc, int blockType) {
 int main(int argc, char **argv) {
     int a,b,c,adrPos,doWrite,doBenchmark, doSZLread, doMultiple, doClear,
 	res, useProtocol,doSZLreadAll, doRun, doStop, doCopyRAMtoROM, doReadout, doSFBandSFC,
-	doNewfunctions, saveDebug,
+	doNewfunctions, saveDebug, doRouting, doList, doListall,
 	useSlot;
 #ifdef PLAY_WITH_KEEPALIVE    	
     int opt;
@@ -225,6 +252,14 @@ int main(int argc, char **argv) {
     _daveOSserialType fds;
     PDU p;
     daveResultSet rs;
+    
+    char routeargs[100];
+    char * first,*second;
+    int subnet1;
+    int subnet3;
+    int PLCadrsize;
+    uc PLCaddress[4];
+
     
     daveSetDebug(daveDebugPrintErrors);
     adrPos=1;
@@ -240,11 +275,15 @@ int main(int argc, char **argv) {
     doReadout=0;
     doSFBandSFC=0;
     doNewfunctions=0;
-    
+    doRouting=0;
+    doList=0;
+    doListall=0;
     useProtocol=daveProtoISOTCP;
     useSlot=2;
     
-    
+
+
+
     if (argc<2) {
 	usage();
 	exit(-1);
@@ -260,6 +299,11 @@ int main(int argc, char **argv) {
 	    doStop=1;
 	} else if (strcmp(argv[adrPos],"-r")==0) {
 	    doRun=1;
+	} else if (strncmp(argv[adrPos],"--listall",9)==0) {
+	    doListall=1;
+	    doList=1;
+	} else if (strncmp(argv[adrPos],"--list",6)==0) {
+	    doList=1;
 	} else if (strncmp(argv[adrPos],"--ram2rom",9)==0) {
 	    doCopyRAMtoROM=1;    
 	} else if (strncmp(argv[adrPos],"--readoutall",12)==0) {
@@ -267,6 +311,32 @@ int main(int argc, char **argv) {
 	    doSFBandSFC=1;
 	} else if (strncmp(argv[adrPos],"--readout",9)==0) {
 	    doReadout=1;
+	} else if (strncmp(argv[adrPos],"--route=",8)==0) {
+	    doRouting=1;
+	    strncpy(routeargs,argv[adrPos]+8, 100);
+	    printf("routing arguments: %s\n",routeargs);
+	    subnet1=strtol(routeargs,&first,16);
+	    printf("1st part subnet ID: %d\n",subnet1);
+	    first++;
+	    subnet3=strtol(first,&first,16);
+	    printf("2nd part subnet ID: %d\n",subnet3);
+	    first++;
+	    printf("rest: %s\n",first);
+	    PLCaddress[0]=strtol(first,&first,10);
+	    if (strlen(first)!=0) {
+		printf("PLC address is IP\n");
+		PLCadrsize=4;
+		first++;
+		PLCaddress[1]=strtol(first,&first,10);
+		first++;
+		PLCaddress[2]=strtol(first,&first,10);
+		first++;
+		PLCaddress[3]=strtol(first,&first,10);
+		
+	    } else {
+		printf("PLC address: %d\n", PLCaddress[0]);
+		PLCadrsize=1;
+	    }
 	} else if (strncmp(argv[adrPos],"--slot=",7)==0) {
 	    useSlot=atol(argv[adrPos]+7);
 	} else if (strcmp(argv[adrPos],"-d")==0) {
@@ -309,6 +379,10 @@ int main(int argc, char **argv) {
 	di =daveNewInterface(fds,"IF1",0, useProtocol, daveSpeed187k);
 	daveSetTimeout(di,5000000);
 	dc =daveNewConnection(di,2,0,useSlot);  // insert your rack and slot here
+
+	if (doRouting) {
+	    daveSetRoutingDestination(dc, subnet1, subnet3, PLCadrsize, PLCaddress);
+	}
 	
 	if (0==daveConnectPLC(dc)) {
 	    printf("Connected.\n");
@@ -387,7 +461,19 @@ int main(int argc, char **argv) {
 	}    
 	if(doSZLreadAll) {
 	    readSZLAll(dc);
-	}    
+	}
+	if(doList||doReadout) { // if readout is not set, loadBlocksOfType will only ist block names
+	    daveListBlocks(dc,NULL);
+	    loadBlocksOfType(dc, daveBlockType_OB, doReadout);
+	    loadBlocksOfType(dc, daveBlockType_FB, doReadout);
+	    loadBlocksOfType(dc, daveBlockType_FC, doReadout);
+	    loadBlocksOfType(dc, daveBlockType_DB, doReadout);
+	    loadBlocksOfType(dc, daveBlockType_SDB, doReadout);
+	    if ((doSFBandSFC) ||(doListall)){	    
+		loadBlocksOfType(dc, daveBlockType_SFB, doReadout);
+	        loadBlocksOfType(dc, daveBlockType_SFC, doReadout);
+	    }
+	}
 	if(doMultiple) {
     	    printf("Now testing read multiple variables.\n"
 		"This will read 1 Byte from inputs,\n"
@@ -619,18 +705,7 @@ int main(int argc, char **argv) {
 	    res = daveCopyRAMtoROM(dc);
             printf("RetVal=(%04X)\n",res);  	    
 	}
-	if(doReadout) {
-	    loadBlocksOfType(dc, daveBlockType_OB);
-	    loadBlocksOfType(dc, daveBlockType_FB);
-	    loadBlocksOfType(dc, daveBlockType_FC);
-	    loadBlocksOfType(dc, daveBlockType_DB);
-	    loadBlocksOfType(dc, daveBlockType_SDB);
-	    if (doSFBandSFC){	    
-		loadBlocksOfType(dc, daveBlockType_SFB);
-	        loadBlocksOfType(dc, daveBlockType_SFC);
-	    }
-	}    
-	
+
 	if(doBenchmark) {
 	    if(useProtocol==daveProtoISOTCP243) { // we have a 200 CPU, use V memory
 		rBenchmark(dc, daveDB);

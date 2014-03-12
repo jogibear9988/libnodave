@@ -101,12 +101,17 @@
 05/15/06	Applied patch from Ken Wenzel for NETLink PRO
 05/15/06	Applied PERL patches from H.-J. Beie
 05/29/06	Bug fixes for AS511
-Version 0.8.4.5    
+Version 0.8.4.5
 07/10/09  	Changed readISOpacket for Win32 to select() before recv().
 07/10/09  	Added closeSocket()
 07/10/09  	Added daveCopyRAMtoROM
-07/12/09  	Changed flags in setport.c. Older version does not work with recent Linux 
-		kernels.
-07/12/09  	Removed C-Sharp subdirectory. These were my first experiments with that 
-		language.
+07/12/09  	Changed flags in setport.c. Older version does not work with recent Linux kernels.
+07/12/09  	Removed C-Sharp subdirectory. These were my first experiments with that language.
+Version 0.8.5
+05/18/13	added support for transport of long PDUs split into multiple IBH packets
+05/18/13  	added support for transport of long PDUs split into multiple ISO packets
+05/18/13  	added routing support
+05/19/13  	added communication type (PG, OP, S7-Basic)
+10/19/13  	changed general code to be ARM compatible without ARM_FIX
+
 

@@ -297,7 +297,7 @@ int main(int argc, char **argv) {
 			printf("Block sended\n");	
 			res=0;
 //			i = _daveReadChars(dc->iface, dc->msgIn+res, 2000000, daveMaxRawLen);
-			i = _daveReadChars2(dc->iface, dc->msgIn+res, daveMaxRawLen);
+			i = dc->iface->ifread(dc->iface, dc->msgIn+res, daveMaxRawLen);
 			if ((daveGetDebug() & daveDebugByte)!=0) {
 			    LOG3("i:%d res:%d\n",i,res);
 			}	
@@ -344,7 +344,7 @@ int main(int argc, char **argv) {
 		    printf("ACK for end sended\n");		
 		    res=0;
 //		    i = _daveReadChars(dc->iface, dc->msgIn+res, 2000000, daveMaxRawLen);
-		    i = _daveReadChars2(dc->iface, dc->msgIn+res, daveMaxRawLen);
+		    i = dc->iface->ifread(dc->iface, dc->msgIn+res, daveMaxRawLen);
 		    if ((daveGetDebug() & daveDebugByte)!=0) {
 		        LOG3("i:%d res:%d\n",i,res);
 		    }	

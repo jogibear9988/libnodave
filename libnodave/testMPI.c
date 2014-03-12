@@ -66,6 +66,10 @@ void usage()
     printf("--listall show program and data blocks in PLC. Includes SFBs and SFCs\n");
     printf("--readout read program and data blocks from PLC.\n");
     printf("--readoutall reads all program and data blocks from PLC. Includes SFBs and SFCs.\n");
+    printf("--route=subnetId,subnetId,PLC address. Try routing. ");
+    printf("	subnetID are the two values you see in Step7 or NetPro. PLC address is a number (MPI,Profibus) or an IP adress.\n");
+    printf("	Examples: --route=0x0125,0x0013,1 connects to PLC 1 in an MPI/Profibus subnet.\n");
+    printf("	Examples: --route=0x0125,0x0013,192.168.1.51 connects to PLC with IP 192.168.1.51 in an Ethernet subnet.\n");
     printf("--sync sets the PLC's clock to PC time.\n");
     printf("--many=<DB number> reads 2000 bytes from the given DB using daveReadManyBytes().\n");
     printf("  The DB should exist and be long enough.\n");
@@ -92,11 +96,11 @@ void wait() {
     uc c;
 #ifdef UNIX_STYLE
     printf("Press return to continue.\n");
-    read(0,&c,1);
+//    read(0,&c,1);
 #endif    
 #ifdef WIN_STYLE
     printf("Press return to continue.\n");
-    getch();
+//    getch();
 #endif    
 //#ifdef WIN_STYLE
 //    printf("Press return to continue.\n");
@@ -192,7 +196,7 @@ void loadBlocksOfType(daveConnection * dc, int blockType, int doReadout) {
     unsigned long res;
 #endif	        
     char blockName [20];
-    uc blockBuffer[20000],*bb;
+    uc blockBuffer[70000],*bb;
     daveBlockEntry dbe[256];   
     j=daveListBlocksOfType(dc, blockType, dbe);
     if (j<0) {
@@ -256,7 +260,7 @@ int main(int argc, char **argv) {
     int i,j, a,b,c, adrPos, doWrite, doBenchmark, 
 	doSZLread, doMultiple, doClear, doNewfunctions, doWbit,
 	initSuccess, doSZLreadAll, doRun, doStop, doReadout, doList, doListall, doSFBandSFC,
-	doExperimental, doSync, doReadTime, doGetHeaders, doTestMany, doUsePhone, 
+	doExperimental, doSync, doReadTime, doGetHeaders, doTestMany, doUsePhone, doRouting,
 	aLongDB,
 	saveDebug,
 	res, useProto, speed, localMPI, plcMPI, plc2MPI, wbit, szlID, szlIndex;
@@ -270,7 +274,14 @@ int main(int argc, char **argv) {
     daveConnection * dc, *dc2;
     _daveOSserialType fds;
     daveResultSet rs;
-    
+
+    char routeargs[100];
+    char * first,*second;
+    int subnet1;
+    int subnet3;
+    int PLCadrsize;
+    uc PLCaddress[4];
+
     adrPos=1;
     doWrite=0;
     doBenchmark=0;
@@ -294,6 +305,7 @@ int main(int argc, char **argv) {
     doGetHeaders=0;
     doTestMany=0;
     doUsePhone=0;
+    doRouting=0;
     
     useProto=daveProtoMPI;
     speed=daveSpeed187k;
@@ -336,6 +348,33 @@ int main(int argc, char **argv) {
 	    doExperimental=1;
 	} else if (strncmp(argv[adrPos],"--readout",9)==0) {
 	    doReadout=1;
+	} else if (strncmp(argv[adrPos],"--route=",8)==0) {
+	    doRouting=1;
+	    strncpy(routeargs,argv[adrPos]+8, 100);
+	    printf("routing arguments: %s\n",routeargs);
+	    subnet1=strtol(routeargs,&first,16);
+	    printf("1st part subnet ID: %d\n",subnet1);
+	    first++;
+	    subnet3=strtol(first,&first,16);
+	    printf("2nd part subnet ID: %d\n",subnet3);
+	    first++;
+	    printf("rest: %s\n",first);
+	    PLCaddress[0]=strtol(first,&first,10);
+	    if (strlen(first)!=0) {
+		printf("PLC address is IP\n");
+		PLCadrsize=4;
+		first++;
+		PLCaddress[1]=strtol(first,&first,10);
+		first++;
+		PLCaddress[2]=strtol(first,&first,10);
+		first++;
+		PLCaddress[3]=strtol(first,&first,10);
+		
+	    } else {
+		printf("PLC address: %d\n", PLCaddress[0]);
+		PLCadrsize=1;
+	    }
+
 	} else if (strncmp(argv[adrPos],"--headers",9)==0) {
 	    doGetHeaders=1;
 	} else if (strncmp(argv[adrPos],"--many=",7)==0) {
@@ -484,6 +523,9 @@ int main(int argc, char **argv) {
 	    return -3;
 	}
 	dc =daveNewConnection(di,plcMPI,0,0);
+	if (doRouting) {
+	    daveSetRoutingDestination(dc, subnet1, subnet3, PLCadrsize, PLCaddress);
+	}
 	if(plc2MPI>=0)
 	    dc2 =daveNewConnection(di,plc2MPI,0,0);
 	else
@@ -538,6 +580,25 @@ int main(int argc, char **argv) {
 		printf("PLC FD4: %d\n", b);
 		printf("PLC FD8: %d\n", c);
 		printf("PLC FD12: %f\n", d);
+		
+		a=daveSwapIed_32(a+1);
+    		daveWriteBytes(dc,daveFlags,0,16+0,4,&a);
+    		b=daveSwapIed_32(b+2);
+    		daveWriteBytes(dc,daveFlags,0,16+4,4,&b);
+    		c=daveSwapIed_32(c+3);
+		daveWriteBytes(dc,daveFlags,0,16+8,4,&c);
+    		d=toPLCfloat(d+1.1);
+    		daveWriteBytes(dc,daveFlags,0,16+12,4,&d);
+    		
+    		a=daveSwapIed_32(a+1);
+    		daveWriteBytes(dc,daveFlags,0,32+0,4,&a);
+    		b=daveSwapIed_32(b+2);
+    		daveWriteBytes(dc,daveFlags,0,32+4,4,&b);
+    		c=daveSwapIed_32(c+3);
+		daveWriteBytes(dc,daveFlags,0,32+8,4,&c);
+    		d=toPLCfloat(d+1.1);
+    		daveWriteBytes(dc,daveFlags,0,32+12,4,&d);
+
 	    }
 	} else 
 	    printf("error %d=%s\n", res, daveStrerror(res));
@@ -846,7 +907,7 @@ int main(int argc, char **argv) {
 	        printf("FD0: %d\n",a);
 		printf("FD4: %d\n",b);
 		printf("FD8: %d\n",c);
-	        printf("FD12: %f\n",d);		
+	        printf("FD12: %f\n",d);
 	    } // doWrite
 	}	    
 

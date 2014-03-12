@@ -73,9 +73,22 @@ HANDLE __stdcall setPort(char * devname, char * baud,char parity /*, HANDLE * wf
 	dcb.fOutxCtsFlow=FALSE;
 	dcb.fOutxDsrFlow=FALSE;
 //	dcb.fRtsControl=FALSE;   // this seems to be the evil. Guess do not understand the meaning of this parameter
-	dcb.fRtsControl=TRUE;
+//	dcb.fRtsControl=TRUE;
+//  from winbase.h :                    //****** ADD
+//#define RTS_CONTROL_DISABLE 0         //****** ADD
+//#define RTS_CONTROL_ENABLE 1          //****** ADD
+//#define RTS_CONTROL_HANDSHAKE 2       //****** ADD
+	dcb.fRtsControl=RTS_CONTROL_ENABLE; //****** ADD
+//#define RTS_CONTROL_TOGGLE 3          //****** ADD
+
 	dcb.fTXContinueOnXoff=TRUE;
-	dcb.StopBits=2;  ///that was 2 !!!
+//	dcb.StopBits=2;  ///that was 2 !!!   //****** REMOVE
+//  from winbase.h :                     //****** ADD
+//#define ONESTOPBIT	0                //****** ADD
+//#define ONE5STOPBITS	1                //****** ADD
+//#define TWOSTOPBITS	2                //****** ADD
+	dcb.StopBits=TWOSTOPBITS;        //****** ADD
+ 
 	if (0==strncmp(baud,"115200",6))
 	dcb.BaudRate = CBR_115200;
     else if (0==strncmp(baud,"57600",5))
@@ -108,7 +121,7 @@ HANDLE __stdcall setPort(char * devname, char * baud,char parity /*, HANDLE * wf
 	dcb.Parity = 0;
 	else if (daveDebug & daveDebugPrintErrors) {
 	    printf(ThisModule "illegal parity mode:%c\n", parity);
-	}	    
+	}
 
 	SetCommState(hComm,&dcb);
 //	printf("got Comm State. %d\n ",dcb.BaudRate);
@@ -131,4 +144,6 @@ int __stdcall closePort(HANDLE port){
     12/17/2004 1st Version for Windows.
     04/03/2005 Hopefully really fixed COM port setting.
     05/08/2005 Removed printfs for quiet operation.
+-Version 0.8.5
+    05/19/2013 Applied changes from Keith
 */

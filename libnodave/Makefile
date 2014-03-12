@@ -26,12 +26,16 @@ CPPFLAGS=-Wall -Winline -DLINUX -DDAVE_LITTLE_ENDIAN
 
 #-static -Wl,static -lc.a -static -lpthread.a -nostdlib 
 #CFLAGS=-O0 -Wall -Winline
+#
+# modified to compile more important programs first. 5/17/2013
+#
 PROGRAMS=testIBH testISO_TCP testMPI testPPI \
-testPPIload testMPIload ibhsim5 \
-isotest4 \
+testPPIload testMPIload \
 testISO_TCPload testMPI_IBHload testPPI_IBHload testPPI_IBH \
 testNLpro \
-testAS511 
+testAS511 \
+isotest4 \
+ibhsim5
 
 
 
@@ -126,11 +130,14 @@ ibhsim10: ibhsim10.o nodave.h nodave.o openSocket.o openSocket.h blocklist.o blo
 libnodave.so: nodave.o setport.o openSocket.o
 	$(LD) -shared nodave.o setport.o openSocket.o -o libnodave.so	
 
+#
+# for some reason, -lpthread now has to be at the end of the linker command line...05/17/2013
+#
 ibhsim5.o: simProperties.c
 ibhsim5: ibhsim5.o nodave.h nodave.o openSocket.o openSocket.h
-	$(CC) -lpthread ibhsim5.o openSocket.o nodave.o -o ibhsim5
+	$(CC) ibhsim5.o openSocket.o nodave.o -lpthread  -o ibhsim5
 isotest4: isotest4.o openSocket.o nodave.o nodave.h
-	$(CC) $(LDFLAGS) -lpthread isotest4.o openSocket.o nodave.o $(LIB) -o isotest4
+	$(CC) $(LDFLAGS) isotest4.o openSocket.o nodave.o $(LIB)  -lpthread  -o isotest4
 
 clean: 
 	rm -f $(DYNAMIC_PROGRAMS)

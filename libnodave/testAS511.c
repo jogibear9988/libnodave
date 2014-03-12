@@ -166,7 +166,7 @@ int main(int argc, char **argv) {
 	doClear, doNewfunctions, doWbit,
 	initSuccess, doRun, doStop, doReadout, doList, doListall, doSFBandSFC,
 	doSync, doReadTime, doGetHeaders, doTestMany, doDump, aLongDB,
-	res, speed, localMPI, plcMPI, plc2MPI, wbit, doReadDB, dbReadLen;
+	res, speed, localMPI, wbit, doReadDB, dbReadLen;
     PDU p;	
     float d;
     uc * buffer;
@@ -196,9 +196,6 @@ int main(int argc, char **argv) {
     dbReadLen=10;
     
     speed=daveSpeed187k;
-    localMPI=0;
-    plcMPI=2;
-    plc2MPI=-1;
     
     if (argc<2) {
 	usage();
@@ -291,7 +288,7 @@ int main(int argc, char **argv) {
 	    printf("Couldn't connect to Adapter!.\n Please try again. You may also try the option -2 for some adapters.\n");	
 	    return -3;
 	}
-	dc =daveNewConnection(di,plcMPI,0,0);
+	dc =daveNewConnection(di,2,0,0);
 	printf("ConnectPLC\n");
 	if (0==daveConnectPLC(dc)) {;
 	    if(doWbit) {
@@ -593,4 +590,5 @@ int main(int argc, char **argv) {
     04/09/05  removed CYGWIN defines. As there were no more differences against LINUX, it should 
 	      work with LINUX defines.
     09/11/05  added a test for daveReadManyBytes
+    05/17/13  removed meaningless MPI address variables
 */

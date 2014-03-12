@@ -1,3 +1,6 @@
+
+int benchcount =1000;  // was 101
+
 extern int seconds, thirds;
     void rBenchmark(daveConnection * dc, int bmArea) {
 	int i,res,maxReadLen,areaNumber;
@@ -10,7 +13,7 @@ extern int seconds, thirds;
 	clock_t t1, t2;
 #endif
 	seconds=0;thirds=0;
-	maxReadLen=dc->maxPDUlength-46;
+	maxReadLen=dc->maxPDUlength-22;
 	areaNumber=0; 
 	if(bmArea==daveDB) areaNumber=1;
     	printf("Now going to do read benchmark with minimum block length of 1.\n");
@@ -21,7 +24,7 @@ extern int seconds, thirds;
 #ifdef BCCWIN    
 	t1=clock();
 #endif	    
-	for (i=1;i<101;i++) {
+	for (i=1;i<benchcount;i++) {
     	    daveReadBytes(dc, bmArea, areaNumber,0, 1, NULL);
 	    if (i%10==0) {
 	        printf("...%d",i);
@@ -37,7 +40,7 @@ extern int seconds, thirds;
         t2=clock();
         usec = 0.001*(t2 - t1);
 #endif
-        printf(" 100 reads took %g secs. \n",usec);
+        printf(" %d reads took %g secs. \n",benchcount,usec);
 	printf(" retries: 2nd %d 3rd %d\n",seconds, thirds);
 	seconds=0;thirds=0;
 	
@@ -50,7 +53,7 @@ extern int seconds, thirds;
 #ifdef BCCWIN    
         t1=clock();
 #endif	    
-        for (i=1;i<101;i++) {
+        for (i=1;i<benchcount;i++) {
 	    daveReadBytes(dc, bmArea, areaNumber, 0, maxReadLen, NULL);
 	    if (i%10==0) {
 	        printf("...%d",i);
@@ -66,7 +69,7 @@ extern int seconds, thirds;
 	t2=clock();
 	usec = 0.001*(t2 - t1);
 #endif
-	printf(" 100 reads took %g secs. \n",usec);
+	printf(" %d reads took %g secs. \n",benchcount,usec);
 	printf(" retries: 2nd %d 3rd %d\n",seconds, thirds);
     	wait();
 	seconds=0;thirds=0;
@@ -79,7 +82,7 @@ extern int seconds, thirds;
 #ifdef BCCWIN    
 	t1=clock();
 #endif	    
-	for (i=1;i<101;i++) {
+	for (i=1;i<benchcount;i++) {
 	    davePrepareReadRequest(dc, &p);
 	    daveAddVarToReadRequest(&p,daveInputs,0,0,6);
 	    daveAddVarToReadRequest(&p,daveFlags,0,0,6);
@@ -102,7 +105,7 @@ extern int seconds, thirds;
 	t2=clock();
 	usec = 0.001*(t2 - t1);
 #endif
-	printf(" 100 reads took %g secs.\n",usec);
+	printf(" %d reads took %g secs. \n",benchcount,usec);
 	printf(" retries: 2nd %d 3rd %d\n",seconds, thirds);
 }
 
@@ -126,7 +129,7 @@ void wBenchmark(daveConnection * dc,int bmArea) {
 #ifdef BCCWIN    
     t1=clock();
 #endif	    
-    for (i=1;i<101;i++) {
+    for (i=1;i<benchcount;i++) {
         daveWriteBytes(dc, bmArea, areaNumber,0,1,&c);
         if (i%10==0) {
 	    printf("...%d",i);
@@ -152,7 +155,7 @@ void wBenchmark(daveConnection * dc,int bmArea) {
 #ifdef BCCWIN    
     t1=clock();
 #endif	    
-    for (i=1;i<101;i++) {		
+    for (i=1;i<benchcount;i++) {		
         daveWriteBytes(dc, bmArea, areaNumber, 0, maxWriteLen, &c);
         if (i%10==0) {
 	    printf("...%d",i);
@@ -178,4 +181,6 @@ void wBenchmark(daveConnection * dc,int bmArea) {
 		block benchmarks. Must use V memory. This is like DB1 of S7-300/400, but a CPU
 		may have a DB1 or not depending on program. So in case of 300/400 use Merker/Flag
 		memory.
+Version 0.8.5
+    05/17/13  	use real maximum size of maxPDUsize-22
 */

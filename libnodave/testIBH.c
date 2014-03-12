@@ -7,7 +7,7 @@
  * This is alpha software. Use entirely on your own risk.             * 
  **********************************************************************
  
- (C) Thomas Hergenhahn (thomas.hergenhahn@web.de) 2002, 2003.
+ (C) Thomas Hergenhahn (thomas.hergenhahn@web.de) 2002...2013.
 
  This is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -27,7 +27,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "nodavesimple.h"
+//#include "nodavesimple.h"
+#include "nodave.h"
 /*
     Do NOT include nodavesimple.h to your own programs. It is just here to demonstrate
     that nodavesimple.h is enough to compile all the basic test programs.
@@ -72,7 +73,10 @@ void usage()
     printf("--list show program and data blocks in PLC.\n");
     printf("--readout read program and data blocks from PLC.\n");
     printf("--readoutall read all program and data blocks from PLC. Includes SFBs and SFCs.\n");
-    printf("--debug=<number> will set daveDebug to number.\n");
+    printf("--route=subnetId,subnetId,PLC address. Try routing. ");
+    printf("	subnetID are the two values you see in Step7 or NetPro. PLC address is a number (MPI,Profibus) or an IP adress.\n");
+    printf("	Examples: --route=0x0125,0x0013,1 connects to PLC 1 in an MPI/Profibus subnet.\n");
+    printf("	Examples: --route=0x0125,0x0013,192.168.1.51 connects to PLC with IP 192.168.1.51 in an Ethernet subnet.\n");    printf("--debug=<number> will set daveDebug to number.\n");
     printf("--area=<number> try to use number as a memory area code.\n");
     printf("--reset tries to reset the NetLink.\n");
     printf("Example: testIBH -w 192.168.1.1\n");
@@ -223,12 +227,20 @@ int main(int argc, char **argv) {
     int i,j, a,b,c, adrPos, doWrite, doBenchmark, 
 	doSZLread, doMultiple, doClear, doNewfunctions, doWbit,
 	initSuccess, doSZLreadAll, doRun, doStop, doReadout, doSFBandSFC, doList, doListAll,
-	doReadTime, doSync, doReset,
+	doReadTime, doSync, doReset, doRouting,
 	saveDebug, testArea,
 	res, useProto, speed, localMPI, plcMPI, plc2MPI, wbit;
     PDU p;	
     float d;
     char buf1 [davePartnerListSize];
+
+    char routeargs[100];
+    char * first,*second;
+    int subnet1;
+    int subnet3;
+    int PLCadrsize;
+    uc PLCaddress[4];
+
     daveInterface * di;
     daveConnection * dc, * dc2;
     _daveOSserialType fds;
@@ -253,6 +265,7 @@ int main(int argc, char **argv) {
     doSync=0;
     doList=0;
     doReset=0;
+    doRouting=0;
     
     useProto=daveProtoMPI_IBH;
     speed=daveSpeed187k;
@@ -306,6 +319,32 @@ int main(int argc, char **argv) {
 	} else
 	if (strncmp(argv[adrPos],"--reset",7)==0) {
 	    doReset=1;
+	} else if (strncmp(argv[adrPos],"--route=",8)==0) {
+	    doRouting=1;
+	    strncpy(routeargs,argv[adrPos]+8, 100);
+	    printf("routing arguments: %s\n",routeargs);
+	    subnet1=strtol(routeargs,&first,16);
+	    printf("1st part subnet ID: %d\n",subnet1);
+	    first++;
+	    subnet3=strtol(first,&first,16);
+	    printf("2nd part subnet ID: %d\n",subnet3);
+	    first++;
+	    printf("rest: %s\n",first);
+	    PLCaddress[0]=strtol(first,&first,10);
+	    if (strlen(first)!=0) {
+		printf("PLC address is IP\n");
+		PLCadrsize=4;
+		first++;
+		PLCaddress[1]=strtol(first,&first,10);
+		first++;
+		PLCaddress[2]=strtol(first,&first,10);
+		first++;
+		PLCaddress[3]=strtol(first,&first,10);
+		
+	    } else {
+		printf("PLC address: %d\n", PLCaddress[0]);
+		PLCadrsize=1;
+	    }
 	} else
 	if (strncmp(argv[adrPos],"--debug=",8)==0) {
 	    daveSetDebug(atol(argv[adrPos]+8));
@@ -383,10 +422,15 @@ int main(int argc, char **argv) {
 	    } else daveDisconnectAdapter(di);
 	}
 	if (!initSuccess) {
-	    printf("Couldn't connect to Adapter!.\n Please try again. You may also try the option -2 for some adapters.\n");	
+	    printf("Couldn't connect to Adapter!.\n Please try again. You may also try the option -2 for some adapters.\n");
 	    return -3;
 	}
-	dc =daveNewConnection(di,plcMPI,0,0);
+	dc =daveNewConnection(di,plcMPI,0,2);
+	if (doRouting) {
+	    daveSetRoutingDestination(dc, subnet1, subnet3, PLCadrsize, PLCaddress);
+	}
+
+	
 	if(plc2MPI>=0)
 	    dc2 =daveNewConnection(di,plc2MPI,0,0);
 	else

@@ -124,7 +124,7 @@ void usage()
     printf("  with the 2nd one to demonstrate that this works.\n");
     printf("--local=<number> will set the local MPI adddres to number. Default is 0.\n");
     printf("--debug=<number> will set daveDebug to number.\n");
-    printf("Example: testS7online -w /S7online\n");
+    printf("Example: testS7online /S7online\n");
 }
 
 void wait() {

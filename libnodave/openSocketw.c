@@ -136,13 +136,13 @@ __declspec (dllexport) HANDLE __stdcall openSocket(const int port, const char * 
 	if (daveDebug & daveDebugOpen) {
 	    LOG2(ThisModule "connect Socket error: %s \n", strerror(errno));
 	}    
-//	socketClose(fd);
 	closesocket(fd);
+	WSACleanup();	// patch from Klaus Albert
 	fd = 0;
     } else {
-//	if (daveDebug & daveDebugOpen) {
+	if (daveDebug & daveDebugOpen) {
 	    LOG2(ThisModule "Connected to host: %s \n", peer);
-//	}    
+	}    
 /*
 	Need this, so we can read a packet with a single read call and make
 	read return if there are too few bytes.
@@ -169,6 +169,7 @@ __declspec (dllexport) HANDLE __stdcall openSocket(const int port, const char * 
 
 __declspec (dllexport) int __stdcall closeSocket(SOCKET h) {
     return closesocket(h);
+    WSACleanup();	// patch from Klaus Albert
 }
 
 #endif
@@ -179,4 +180,7 @@ __declspec (dllexport) int __stdcall closeSocket(SOCKET h) {
     07/19/2004  removed unused vars.
 Version 0.8.4.5    
     07/10/09  	Added closeSocket()
+Version 0.8.5    
+    05/17/2013  	Suppress message if debug mode is not set
+    05/20/2013  	added WSACleanup(), patch from Klaus Albert
 */
