@@ -453,7 +453,7 @@ int main(int argc, char **argv) {
 	    }
 	} else 
 	    printf("error %d=%s\n", res, daveStrerror(res));
-/*
+
 	if(dc2) {    
 	res=daveReadBytes(dc2, daveFlags, 0, 0, 16,NULL);	    
 	if (res==0) {
@@ -461,15 +461,15 @@ int main(int argc, char **argv) {
     	    b=daveGetS32(dc2);
     	    c=daveGetS32(dc2);
 	    d=daveGetFloat(dc2);
-	    printf("PLC MPI(%d) FD0: %d\n", dc2->MPIAdr, a);
-	    printf("PLC MPI(%d) FD4: %d\n", dc2->MPIAdr, b);
-	    printf("PLC MPI(%d) FD8: %d\n", dc2->MPIAdr, c);
-	    printf("PLC MPI(%d) FD12: %f\n", dc2->MPIAdr, d);
+	    printf("PLC MPI(%d) FD0: %d\n", daveGetMPIAdr(dc2), a);
+	    printf("PLC MPI(%d) FD4: %d\n", daveGetMPIAdr(dc2), b);
+	    printf("PLC MPI(%d) FD8: %d\n", daveGetMPIAdr(dc2), c);
+	    printf("PLC MPI(%d) FD12: %f\n", daveGetMPIAdr(dc2), d);
 	} else 
 	    printf("error %d=%s\n", res, daveStrerror(res));    
 	}    
     
-	    
+/*	    
 	printf("trying to read from DB1\n");
 	res=daveReadBytes(dc, daveDB, 1, 0, 16,NULL);
 	if(res==daveResOK) {

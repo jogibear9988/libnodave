@@ -23,6 +23,7 @@
  along with Libnodave; see the file COPYING.  If not, write to
  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  
 */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -38,10 +39,55 @@
 #endif
 
 #ifdef BCCWIN
+#include <windows.h>
 #include <time.h>
     void usage(void);
     void wait(void);
 #define WIN_STYLE
+
+/*
+    The following code has been copied from Microsoft Knowledge Base article KB124103,
+    "How to obtain a Console Window Handle (HWND)"
+*/
+
+HWND DECL2 GetConsoleHwnd(void)
+   {
+       #define MY_BUFSIZE 1024 // Buffer size for console window titles.
+       HWND hwndFound;         // This is what is returned to the caller.
+       char pszNewWindowTitle[MY_BUFSIZE]; // Contains fabricated
+                                           // WindowTitle.
+       char pszOldWindowTitle[MY_BUFSIZE]; // Contains original
+                                           // WindowTitle.
+
+       // Fetch current window title.
+
+       GetConsoleTitle(pszOldWindowTitle, MY_BUFSIZE);
+
+       // Format a "unique" NewWindowTitle.
+
+       wsprintf(pszNewWindowTitle,"%d/%d",
+                   GetTickCount(),
+                   GetCurrentProcessId());
+
+       // Change current window title.
+
+       SetConsoleTitle(pszNewWindowTitle);
+
+       // Ensure window title has been updated.
+
+       Sleep(40);
+
+       // Look for NewWindowTitle.
+
+       hwndFound=FindWindow(NULL, pszNewWindowTitle);
+
+       // Restore original window title.
+
+       SetConsoleTitle(pszOldWindowTitle);
+
+       return(hwndFound);
+   }
+
 #endif
 
 extern int daveDebug;
@@ -399,7 +445,7 @@ int main(int argc, char **argv) {
 	}	
     }    
     
-    fds.rfd=openS7online(argv[adrPos]);
+    fds.rfd=openS7online(argv[adrPos], GetConsoleHwnd());
     fds.wfd=fds.rfd;
 //    printf("fds.rfd %d\n", fds.rfd);
     initSuccess=0;

@@ -96,4 +96,9 @@
 08/06/05	Added a PERL interface and example code.
 08/07/05	Added a VB interface and example code.
 10/06/05	Added usage of Siemens libraries for transport.
-		
+
+03/30/06	Bug fixes for .NET
+05/15/06	Applied patch from Ken Wenzel for NETLink PRO
+05/15/06	Applied PERL patches from H.-J. Beie
+05/29/06	Bug fixes for AS511
+

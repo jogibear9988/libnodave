@@ -18,6 +18,9 @@
  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  
 */
 
+#ifdef __cplusplus  //******  ADD
+extern "C" {        //******  ADD
+#endif              //******  ADD
 
 #ifdef BCCWIN
 
@@ -32,9 +35,9 @@ EXPORTSPEC HANDLE __stdcall setPort(char * name, char* baud,char parity);
 EXPORTSPEC int __stdcall closePort(HANDLE port);
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+//#ifdef __cplusplus  //******  REMOVE moved to top
+//extern "C" {        //******  REMOVE moved to top
+//#endif              //******  REMOVE moved to top
 
 
 #ifdef LINUX
@@ -46,3 +49,7 @@ int closePort(int port);
 #ifdef __cplusplus
 }
 #endif
+
+/*
+    01/08/07  Put __cplusplus directive as where suggested by Keith Harrison.
+*/

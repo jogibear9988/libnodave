@@ -37,7 +37,8 @@ extern "C" {		// All here is C, *** NOT *** C++
 #else
 #define EXPORTSPEC __declspec (dllimport)
 #endif
-EXPORTSPEC HANDLE DECL2 openS7online(const char * accessPoint);
+//EXPORTSPEC HANDLE DECL2 openS7online(const char * accessPoint);
+EXPORTSPEC HANDLE DECL2 openS7online(const char * accessPoint, HWND handle);
 EXPORTSPEC HANDLE DECL2 closeS7online(int h);
 #endif
 
@@ -46,3 +47,7 @@ EXPORTSPEC HANDLE DECL2 closeS7online(int h);
 #endif
 
 #endif
+
+/*
+    01/09/07  Used Axel Kinting's version.
+*/

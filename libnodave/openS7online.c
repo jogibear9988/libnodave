@@ -13,14 +13,18 @@
     1. We have no .lib file for them.
     2. We don't want to link with a particular version.
     3. Libnodave shall remain useable without Siemens .dlls. So it shall not try to access them
-       unless the user chooses the daveProtoUseS7dlls.
+       unless the user chooses the daveProtoS7online.
 */
 
 extern int daveDebug;
 
-EXPORTSPEC HANDLE DECL2 openS7online(const char * accessPoint) {
+typedef int (DECL2 * _setHWnd) (int, HWND);
+
+EXPORTSPEC HANDLE DECL2 openS7online(const char * accessPoint, HWND handle) {
     HMODULE hmod;
     int h,en;
+	_setHWnd SetSinecHWnd; 
+
     hmod=LoadLibrary("S7onlinx.dll");
     if (daveDebug & daveDebugOpen)
 	LOG2("LoadLibrary(S7onlinx.dll) returned %p)\n",hmod);
@@ -45,13 +49,22 @@ EXPORTSPEC HANDLE DECL2 openS7online(const char * accessPoint) {
     if (daveDebug & daveDebugOpen)
 	LOG2("GetProcAddress returned %p)\n",SCP_receive);
     
+    SetSinecHWnd=GetProcAddress(hmod,"SetSinecHWnd");
+    if (daveDebug & daveDebugOpen)
+	LOG2("GetProcAddress returned %p)\n",SetSinecHWnd);
+
     en=SCP_get_errno();
     h=SCP_open(accessPoint);
     en=SCP_get_errno();
     LOG3("handle: %d  error:%d\n", h, en);
+	SetSinecHWnd(h, handle);
     return h;
 };
     
 EXPORTSPEC HANDLE DECL2 closeS7online(int h) {
     SCP_close(h);
 }
+
+/*
+    01/09/07  Used Axel Kinting's version.
+*/

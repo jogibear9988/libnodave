@@ -83,8 +83,8 @@ testNLpro.exe: testNLpro.obj nodave.obj openSocketw.obj
 	$(LL) $(LFLAGS) openSocketw.obj nodave.obj testNLpro.obj "C:\\psdk\\lib\\ws2_32.lib" /out:$@	
 libnodave.dll: nodave.obj setportw.obj openSocketw.obj openS7online.obj 
 	$(LL) $(LLFLAGS) /DLL nodave.obj setportw.obj openSocketw.obj openS7online.obj "C:\\psdk\\lib\\ws2_32.lib" /OUT:libnodave.dll
-testS7online.exe: testS7online.obj nodave.obj openS7online.obj 
-	$(LL) $(LFLAGS) nodave.obj testS7online.obj openS7online.obj  "C:\\psdk\\lib\\ws2_32.lib" /out:$@		
+testS7online.exe: testS7online.obj nodave.obj openS7online.obj
+	$(LL) $(LFLAGS) nodave.obj testS7online.obj openS7online.obj "C:\\psdk\\lib\\ws2_32.lib" "C:\\psdk\\lib\\User32.lib" /out:$@		
 #
 # delete all but the sources:
 #
@@ -117,4 +117,6 @@ openS7online.obj: openS7online.c openS7online.h
 	$(CC) $(CFLAGS) -DDOEXPORT openS7online.c
 s7fake.obj: s7fake.c
 	$(CC) $(CFLAGS) -DDOEXPORT s7fake.c
+getHandle.obj: getHandle.c 
+	$(CC) $(CFLAGS) -DDOEXPORT getHandle.c
 	

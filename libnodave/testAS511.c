@@ -64,6 +64,9 @@ void usage()
     printf("  The DB should exist and be long enough.\n");
     printf("--debug=<number> will set daveDebug to number.\n");
     printf("--dump read out 64k of PLC memory.\n");
+    printf("--readDB=<DB number> reads length (default 10) bytes from the given DB.\n");
+    printf("--length=<number> sets read length to number.\n");
+    printf("  The DB should exist and be long enough.\n");
 #ifdef UNIX_STYLE
     printf("Example: testAS511 -w /dev/ttyS0\n");
 #endif    
@@ -164,7 +167,7 @@ int main(int argc, char **argv) {
 	initSuccess, doRun, doStop, doReadout, doList, doListall, doSFBandSFC,
 	doSync, doReadTime, doGetHeaders, doTestMany, doDump, aLongDB,
 	saveDebug,
-	res, speed, localMPI, plcMPI, plc2MPI, wbit;
+	res, speed, localMPI, plcMPI, plc2MPI, wbit, doReadDB, dbReadLen;
     PDU p;	
     float d;
     uc * buffer;
@@ -190,6 +193,8 @@ int main(int argc, char **argv) {
     doGetHeaders=0;
     doTestMany=0;
     doDump=0;
+    doReadDB=-1;
+    dbReadLen=10;
     
     speed=daveSpeed187k;
     localMPI=0;
@@ -244,6 +249,12 @@ int main(int argc, char **argv) {
 	} else if (strncmp(argv[adrPos],"--local=",8)==0) {
 	    localMPI=atol(argv[adrPos]+8);
 	    printf("setting local MPI address to:%d\n",localMPI);
+	} else if (strncmp(argv[adrPos],"--length=",9)==0) {
+	    dbReadLen=atol(argv[adrPos]+9);
+	    printf("setting read length to:%d\n",dbReadLen);
+	} else if (strncmp(argv[adrPos],"--readDB=",9)==0) {
+	    doReadDB=atol(argv[adrPos]+9);
+	    printf("setting DB number to read from to:%d\n",doReadDB);
 	} else if (strncmp(argv[adrPos],"--sync",6)==0) {
 	    doSync=1;
 	} else
@@ -324,29 +335,13 @@ int main(int argc, char **argv) {
 	} else 
 	    printf("error %d=%s\n", res, daveStrerror(res));
 
-	res=daveReadBytes(dc, daveDB, 1, 0, 24,NULL);
+	if (doReadDB>=0) {
+	res=daveReadBytes(dc, daveDB, doReadDB, 0, dbReadLen,NULL);
 	if (res==0) {
-//	    d=daveGetKGAt(dc,0);
-	    d=daveGetKG(dc);
-	    printf("DD0: %g\n", d);
-	    d=daveGetKG(dc);
-//	    d=daveGetKGAt(dc,4);
-	    printf("DD0: %g\n", d);
-	    d=daveGetKG(dc);
-//	    d=daveGetKGAt(dc,8);
-	    printf("DD0: %g\n", d);
-	    d=daveGetKG(dc);
-//	    d=daveGetKGAt(dc,12);
-	    printf("DD0: %g\n", d);
-	    d=daveGetKG(dc);
-//	    d=daveGetKGAt(dc,16);
-	    printf("DD0: %g\n", d);
-	    d=daveGetKG(dc);
-//	    d=daveGetKGAt(dc,20);
-	    printf("DD0: %g\n", d);
+	    _daveDump("bytes from DB:",dc->resultPointer,dbReadLen);
 	} else 
 	    printf("error %d=%s\n", res, daveStrerror(res));
-    
+	}
 	if(doNewfunctions) {
 //	    saveDebug=daveGetDebug();
 	    

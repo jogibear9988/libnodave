@@ -32,12 +32,17 @@ extern "C" {
 #ifndef __nodave
 #define __nodave
 
+#define daveSerialConnection 0
+#define daveTcpConnection 1
+#define daveS7OnlineConnection 2
+
 #ifdef LINUX
 #define DECL2
 #define EXPORTSPEC
 typedef struct dost {
     int rfd;
     int wfd;
+//    int connectionType;
 } _daveOSserialType;
 #include <stdlib.h>
 #define tmotype int
@@ -61,6 +66,7 @@ typedef struct dost {
 typedef struct dost {
     HANDLE rfd;
     HANDLE wfd;
+//    int connectionType;
 } _daveOSserialType;
 
 #define OS_KNOWN
@@ -77,6 +83,7 @@ typedef struct dost {
 typedef struct dost {
     int rfd;
     int wfd;
+    int connectionType;
 } _daveOSserialType;
 #define OS_KNOWN
 #endif
@@ -89,6 +96,7 @@ typedef struct dost {
 typedef struct dost {
     int rfd;
     int wfd;
+    int connectionType;
 } _daveOSserialType;
 #define tmotype long
 #define OS_KNOWN
@@ -1108,7 +1116,7 @@ EXPORTSPEC int DECL2 stdwrite(daveInterface * di, uc * buffer, int length);
 EXPORTSPEC int DECL2 stdread(daveInterface * di, uc * buffer, int length);
 
 EXPORTSPEC int DECL2 _daveInitAdapterNLpro(daveInterface * di);
-EXPORTSPEC int DECL2 _daveInitStepNLpro(daveInterface * iface, int nr, uc* fix, int len, char*caller);
+EXPORTSPEC int DECL2 _daveInitStepNLpro(daveInterface * iface, int nr, uc* fix, int len, char*caller, uc * buffer);
 EXPORTSPEC int DECL2 _daveConnectPLCNLpro (daveConnection * dc);
 EXPORTSPEC int DECL2 _daveSendMessageNLpro(daveConnection *dc, PDU *p);
 EXPORTSPEC int DECL2 _daveGetResponseNLpro(daveConnection *dc);
